@@ -466,6 +466,58 @@ class TestResolver:
 
         assert instance1 is instance2
 
+    def test_resolver_compile_with_alias_dependency(self) -> None:
+        """Test that compile() correctly resolves alias when looking up dependency."""
+
+        class IRepository:
+            pass
+
+        class RepositoryImpl(IRepository):
+            pass
+
+        class Service:
+            def __init__(self, repo: IRepository) -> None:
+                self.repo = repo
+
+        container = Container()
+        container.register(RepositoryImpl, scope="singleton")
+        container.alias(IRepository, RepositoryImpl)
+        container.register(Service, scope="singleton")
+
+        # Service depends on IRepository (alias) - resolver should find RepositoryImpl
+        service = container.resolve(Service)
+        assert isinstance(service.repo, RepositoryImpl)
+
+    def test_resolver_compile_with_alias_dependency_override(self) -> None:
+        """Test that override works when dependency uses alias type."""
+
+        class IRepository:
+            def get_data(self) -> str:
+                return "base"
+
+        class RepositoryImpl(IRepository):
+            def get_data(self) -> str:
+                return "impl"
+
+        class MockRepository(IRepository):
+            def get_data(self) -> str:
+                return "mock"
+
+        class Service:
+            def __init__(self, repo: IRepository) -> None:
+                self.repo = repo
+
+        container = Container()
+        container.enable_test_mode()
+        container.register(RepositoryImpl, scope="singleton")
+        container.alias(IRepository, RepositoryImpl)
+        container.register(Service, scope="singleton")
+
+        # Override canonical type - should affect Service's dependency
+        with container.override(RepositoryImpl, MockRepository()):
+            service = container.resolve(Service)
+            assert service.repo.get_data() == "mock"
+
     def test_resolver_override_via_alias(self) -> None:
         """Test that override on canonical type works when resolving via alias."""
 

@@ -59,3 +59,26 @@ def test_install_auto_provided() -> None:
         typer.echo(message)
 
     install(app, container)
+
+
+def test_install_with_alias() -> None:
+    """Test that install() correctly handles alias types."""
+
+    class IService:
+        pass
+
+    class ServiceImpl(IService):
+        pass
+
+    container = Container()
+    container.register(ServiceImpl, scope="singleton")
+    container.alias(IService, ServiceImpl)
+
+    app = typer.Typer()
+
+    @app.command()
+    def say_hello(service: IService = Inject()) -> Any:
+        typer.echo(f"Service: {service}")
+
+    # Should not raise - alias should be resolved to canonical type
+    install(app, container)
