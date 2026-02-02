@@ -287,6 +287,19 @@ The `ignore` parameter accepts:
 
 When a package is ignored, all its submodules are also ignored.
 
+### Relative package paths
+
+You can use relative paths (like Python's relative imports) for more portable configuration:
+
+```python
+# myapp/container.py
+container.scan(".")                      # Scan current package (myapp)
+container.scan([".services", ".repos"])  # Scan submodules
+container.scan(".", ignore=[".api"])     # Relative ignore paths
+container.scan("..")                     # Scan parent package
+container.scan("..other")                # Scan sibling package
+```
+
 ### Circular import detection
 
 If a scanned module imports the container at module level, it can trigger another `scan()` call, creating an infinite loop. `AnyDI` detects this and raises a `RuntimeError` with a helpful message.

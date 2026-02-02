@@ -306,3 +306,73 @@ class TestContainerScanner:
             assert "Solutions:" in error_message
         finally:
             Scanner._scanning_packages.discard("tests.scan_app")
+
+
+class TestRelativePackageScanning:
+    @pytest.fixture
+    def container(self) -> Container:
+        return Container()
+
+    def test_resolve_relative_current_package(self, container: Container) -> None:
+        """Test resolving '.' to current package."""
+        scanner = Scanner(container)
+        result = scanner._resolve_relative_name(".", "email_campaigns")
+        assert result == "email_campaigns"
+
+    def test_resolve_relative_submodule(self, container: Container) -> None:
+        """Test resolving '.submodule' to package.submodule."""
+        scanner = Scanner(container)
+        result = scanner._resolve_relative_name(".campaigns", "email_campaigns")
+        assert result == "email_campaigns.campaigns"
+
+    def test_resolve_relative_parent(self, container: Container) -> None:
+        """Test resolving '..' to parent package."""
+        scanner = Scanner(container)
+        result = scanner._resolve_relative_name("..", "email_campaigns.sub")
+        assert result == "email_campaigns"
+
+    def test_resolve_relative_sibling(self, container: Container) -> None:
+        """Test resolving '..sibling' to sibling package."""
+        scanner = Scanner(container)
+        result = scanner._resolve_relative_name(
+            "..audiences", "email_campaigns.campaigns"
+        )
+        assert result == "email_campaigns.audiences"
+
+    def test_resolve_relative_too_many_levels_raises(
+        self, container: Container
+    ) -> None:
+        """Test that too many parent levels raises ValueError."""
+        scanner = Scanner(container)
+        with pytest.raises(ValueError, match="too many parent levels"):
+            scanner._resolve_relative_name("...", "email_campaigns")
+
+    def test_resolve_relative_packages_mixed(self, container: Container) -> None:
+        """Test resolving a mix of relative and absolute packages."""
+        scanner = Scanner(container)
+        packages = [".", ".sub", "other_package"]
+        result = scanner._resolve_relative_packages(packages, "myapp")
+
+        assert result == ["myapp", "myapp.sub", "other_package"]
+
+    def test_resolve_relative_packages_with_modules(self, container: Container) -> None:
+        """Test that module objects are passed through unchanged."""
+        import tests.scan_app as scan_app_module
+
+        scanner = Scanner(container)
+        packages = [scan_app_module, ".sub"]
+        result = scanner._resolve_relative_packages(packages, "myapp")
+
+        assert result[0] is scan_app_module
+        assert result[1] == "myapp.sub"
+
+    def test_has_relative_packages_detects_relative(self, container: Container) -> None:
+        """Test that _has_relative_packages correctly detects relative paths."""
+        scanner = Scanner(container)
+
+        assert scanner._has_relative_packages(["."])
+        assert scanner._has_relative_packages([".sub"])
+        assert scanner._has_relative_packages(["abs", ".rel"])
+        assert scanner._has_relative_packages(".")
+        assert not scanner._has_relative_packages(["absolute"])
+        assert not scanner._has_relative_packages(None)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
@@ -44,9 +44,21 @@ class Scanner:
         tags: Iterable[str] | None = None,
         ignore: PackageOrIterable | None = None,
     ) -> None:
-        """Scan packages or modules for decorated members and inject dependencies."""
+        """Scan packages or modules for decorated members and inject dependencies.
+
+        Supports relative package paths (like Python's relative imports):
+        - "." scans the caller's package
+        - ".submodule" scans a submodule of the caller's package
+        - ".." scans the parent package
+        - "..sibling" scans a sibling package
+        """
         if isinstance(packages, (ModuleType, str)):
             packages = [packages]
+
+        # Resolve relative package paths
+        caller_package = self._get_caller_package(packages, ignore)
+        packages = self._resolve_relative_packages(packages, caller_package)
+        ignore = self._resolve_relative_packages(ignore, caller_package)
 
         pkg_names = {p if isinstance(p, str) else p.__name__ for p in packages}
         overlap = pkg_names & Scanner._scanning_packages
@@ -68,7 +80,7 @@ class Scanner:
         finally:
             Scanner._scanning_packages -= pkg_names
 
-    def _do_scan(
+    def _do_scan(  # noqa: C901
         self,
         packages: PackageOrIterable,
         *,
@@ -79,17 +91,28 @@ class Scanner:
         if isinstance(packages, (ModuleType, str)):
             packages = [packages]
 
-        tags_list = list(tags) if tags else []
+        tags_set: set[str] = set(tags) if tags else set()
         ignore_prefixes = self._normalize_ignore(ignore)
         provided_classes: list[type[Provided]] = []
         injectable_dependencies: list[ScannedDependency] = []
 
         # Single pass: collect both @provided classes and @injectable functions
         for module in self._iter_modules(packages, ignore_prefixes=ignore_prefixes):
-            provided_classes.extend(self._scan_module_for_provided(module))
-            injectable_dependencies.extend(
-                self._scan_module_for_injectable(module, tags=tags_list)
-            )
+            module_name = module.__name__
+            for name, member in vars(module).items():
+                if name.startswith("_"):
+                    continue
+                if getattr(member, "__module__", None) != module_name:
+                    continue
+
+                if inspect.isclass(member) and is_provided(member):
+                    provided_classes.append(member)
+                elif callable(member) and is_injectable(member):
+                    member_tags = set(member.__injectable__["tags"] or ())
+                    if not tags_set or (tags_set & member_tags):
+                        injectable_dependencies.append(
+                            ScannedDependency(member=member, module=module)
+                        )
 
         # First: register @provided classes
         for cls in provided_classes:
@@ -108,33 +131,124 @@ class Scanner:
             decorated = self._container.inject()(dependency.member)
             setattr(dependency.module, dependency.member.__name__, decorated)
 
-    def _normalize_ignore(self, ignore: PackageOrIterable | None) -> list[str]:
-        """Normalize ignore parameter to a list of module name prefixes."""
-        if ignore is None:
+    def _has_relative_packages(self, *package_lists: PackageOrIterable | None) -> bool:
+        """Check if any package list contains relative paths."""
+        for packages in package_lists:
+            if packages is None:
+                continue
+            if isinstance(packages, str):
+                if packages.startswith("."):
+                    return True
+            elif isinstance(packages, ModuleType):
+                continue
+            else:
+                for p in packages:
+                    if isinstance(p, str) and p.startswith("."):
+                        return True
+        return False
+
+    def _get_caller_package(
+        self,
+        packages: Iterable[Package],
+        ignore: PackageOrIterable | None,
+    ) -> str | None:
+        """Get the package name of the module that called scan()."""
+        if not self._has_relative_packages(packages, ignore):
+            return None
+
+        frame = inspect.currentframe()
+        try:
+            while frame is not None:
+                frame = frame.f_back
+                if frame is None:
+                    break
+                module_name = frame.f_globals.get("__name__")
+                if module_name and not module_name.startswith("anydi"):
+                    # Return package portion (remove module name if present)
+                    if "." in module_name:
+                        return module_name.rsplit(".", 1)[0]
+                    return module_name
+        finally:
+            del frame
+
+        raise ValueError(
+            "Cannot use relative package paths: unable to determine caller package. "
+            "Use absolute package names instead."
+        )
+
+    def _resolve_relative_name(self, relative_name: str, base_package: str) -> str:
+        """Resolve a relative package name to absolute."""
+        num_dots = len(relative_name) - len(relative_name.lstrip("."))
+        remainder = relative_name[num_dots:]
+
+        package_parts = base_package.split(".")
+
+        # Navigate up for parent references (..)
+        if num_dots > 1:
+            levels_up = num_dots - 1
+            if levels_up >= len(package_parts):
+                raise ValueError(
+                    f"Cannot resolve '{relative_name}': "
+                    f"too many parent levels for base package '{base_package}'"
+                )
+            package_parts = package_parts[:-levels_up]
+
+        if remainder:
+            return ".".join(package_parts) + "." + remainder
+        return ".".join(package_parts)
+
+    def _resolve_relative_packages(
+        self,
+        packages: PackageOrIterable | None,
+        caller_package: str | None,
+    ) -> list[Package]:
+        """Resolve relative package names to absolute names."""
+        if packages is None:
             return []
+
+        if isinstance(packages, (ModuleType, str)):
+            packages = [packages]
+
+        resolved: list[Package] = []
+        for package in packages:
+            if isinstance(package, ModuleType):
+                resolved.append(package)
+            elif not package.startswith("."):
+                resolved.append(package)
+            else:
+                if caller_package is None:
+                    raise ValueError(
+                        "Cannot use relative package paths: "
+                        "unable to determine caller package. "
+                        "Use absolute package names instead."
+                    )
+                resolved.append(self._resolve_relative_name(package, caller_package))
+
+        return resolved
+
+    def _normalize_ignore(self, ignore: PackageOrIterable | None) -> tuple[str, ...]:
+        """Normalize ignore parameter to a tuple of module name prefixes."""
+        if ignore is None:
+            return ()
 
         if isinstance(ignore, (ModuleType, str)):
             ignore = [ignore]
 
         prefixes: list[str] = []
         for item in ignore:
-            if isinstance(item, ModuleType):
-                prefixes.append(item.__name__)
-            else:
-                prefixes.append(item)
-        return prefixes
+            name = item.__name__ if isinstance(item, ModuleType) else item
+            prefixes.append(name)
+            prefixes.append(name + ".")  # For startswith check
+        return tuple(prefixes)
 
     def _should_ignore_module(
-        self, module_name: str, ignore_prefixes: list[str]
+        self, module_name: str, ignore_prefixes: tuple[str, ...]
     ) -> bool:
         """Check if a module should be ignored based on ignore prefixes."""
-        for prefix in ignore_prefixes:
-            if module_name == prefix or module_name.startswith(prefix + "."):
-                return True
-        return False
+        return module_name.startswith(ignore_prefixes) if ignore_prefixes else False
 
     def _iter_modules(
-        self, packages: Iterable[Package], *, ignore_prefixes: list[str]
+        self, packages: Iterable[Package], *, ignore_prefixes: tuple[str, ...]
     ) -> Iterator[ModuleType]:
         """Iterate over all modules in the given packages."""
         for package in packages:
@@ -182,42 +296,3 @@ class Scanner:
         finally:
             # Always cleanup, even if import fails
             self._importing_modules.discard(module_name)
-
-    def _scan_module_for_provided(self, module: ModuleType) -> list[type[Provided]]:
-        """Scan a module for @provided classes."""
-        provided_classes: list[type[Provided]] = []
-
-        for _, member in inspect.getmembers(module, predicate=inspect.isclass):
-            if getattr(member, "__module__", None) != module.__name__:
-                continue
-
-            if is_provided(member):
-                provided_classes.append(member)
-
-        return provided_classes
-
-    def _scan_module_for_injectable(
-        self, module: ModuleType, *, tags: list[str]
-    ) -> list[ScannedDependency]:
-        """Scan a module for @injectable functions."""
-        dependencies: list[ScannedDependency] = []
-
-        for _, member in inspect.getmembers(module, predicate=callable):
-            if getattr(member, "__module__", None) != module.__name__:
-                continue
-
-            if self._should_include_member(member, tags=tags):
-                dependencies.append(ScannedDependency(member=member, module=module))
-
-        return dependencies
-
-    @staticmethod
-    def _should_include_member(member: Callable[..., Any], *, tags: list[str]) -> bool:
-        """Determine if a member should be included based on tags or marker defaults."""
-        if is_injectable(member):
-            member_tags = set(member.__injectable__["tags"] or [])
-            if tags:
-                return bool(set(tags) & member_tags)
-            return True  # No tags passed → include all injectables
-
-        return False
