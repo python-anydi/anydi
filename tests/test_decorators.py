@@ -283,8 +283,8 @@ def test_child_class_can_have_different_scope() -> None:
     class Child(Base):
         pass
 
-    assert Base.__provided__ == {"scope": "singleton"}
-    assert Child.__provided__ == {"scope": "transient"}
+    assert getattr(Base, "__provided__") == {"scope": "singleton"}
+    assert getattr(Child, "__provided__") == {"scope": "transient"}
 
 
 def test_decorator_on_class_with_manual_provided_error() -> None:
