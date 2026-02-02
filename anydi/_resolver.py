@@ -103,7 +103,11 @@ class Resolver:
         for param in provider.parameters:
             if param.provider is not None:
                 # Look up the current provider to handle overrides
-                current_provider = self._container.providers.get(param.dependency_type)
+                # Resolve alias to canonical type if needed
+                dependency_type = self._container.aliases.get(
+                    param.dependency_type, param.dependency_type
+                )
+                current_provider = self._container.providers.get(dependency_type)
                 if current_provider is not None:
                     self.compile(current_provider, is_async=is_async)
                 else:
@@ -198,7 +202,11 @@ class Resolver:
 
             if param.provider is not None:
                 # Look up the current provider from the container to handle overrides
-                current_provider = self._container.providers.get(param.dependency_type)
+                # Resolve alias to canonical type if needed
+                dependency_type = self._container.aliases.get(
+                    param.dependency_type, param.dependency_type
+                )
+                current_provider = self._container.providers.get(dependency_type)
                 if current_provider is not None:
                     compiled = cache.get(current_provider.dependency_type)
                 else:

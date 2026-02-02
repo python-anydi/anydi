@@ -97,8 +97,10 @@ def _process_callback(callback: Callable[..., Any], container: Container) -> Any
         processed_parameter = container._injector.unwrap_parameter(parameter)
         if should_inject:
             injected_param_names.add(parameter.name)
+            # Resolve alias to canonical type if needed
+            canonical_type = container.aliases.get(dependency_type, dependency_type)
             try:
-                scopes.add(container.providers[dependency_type].scope)
+                scopes.add(container.providers[canonical_type].scope)
             except KeyError:
                 if inspect.isclass(dependency_type) and is_provided(dependency_type):
                     scopes.add(dependency_type.__provided__["scope"])
