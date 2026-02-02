@@ -34,12 +34,22 @@ class ProvidedMetadata(TypedDict):
     from_context: NotRequired[bool]
 
 
+def _check_already_provided(cls: type) -> None:
+    """Check if class already has __provided__ defined directly on it."""
+    if "__provided__" in cls.__dict__:
+        raise TypeError(
+            f"Class `{cls.__name__}` already has `__provided__` defined. "
+            "Remove the duplicate scope decorator or manual `__provided__` attribute."
+        )
+
+
 def provided(
     *, scope: Scope, alias: Any = NOT_SET, from_context: bool = False
 ) -> Callable[[ClassT], ClassT]:
     """Decorator for marking a class as provided by AnyDI with a specific scope."""
 
     def decorator(cls: ClassT) -> ClassT:
+        _check_already_provided(cls)
         metadata: ProvidedMetadata = {"scope": scope}
         if alias is not NOT_SET:
             metadata["alias"] = alias
@@ -67,6 +77,7 @@ def singleton(
     """Decorator for marking a class as a singleton dependency."""
 
     def decorator(c: ClassT) -> ClassT:
+        _check_already_provided(c)
         metadata: ProvidedMetadata = {"scope": "singleton"}
         if alias is not NOT_SET:
             metadata["alias"] = alias
@@ -95,6 +106,7 @@ def transient(
     """Decorator for marking a class as a transient dependency."""
 
     def decorator(c: ClassT) -> ClassT:
+        _check_already_provided(c)
         metadata: ProvidedMetadata = {"scope": "transient"}
         if alias is not NOT_SET:
             metadata["alias"] = alias
@@ -127,6 +139,7 @@ def request(
     """Decorator for marking a class as a request-scoped dependency."""
 
     def decorator(c: ClassT) -> ClassT:
+        _check_already_provided(c)
         metadata: ProvidedMetadata = {"scope": "request"}
         if alias is not NOT_SET:
             metadata["alias"] = alias
