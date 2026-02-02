@@ -235,6 +235,69 @@ def test_request_decorator_with_alias_and_from_context() -> None:
     }
 
 
+# duplicate decorator tests
+
+
+def test_duplicate_provided_decorator_error() -> None:
+    with pytest.raises(
+        TypeError,
+        match="Class `Service` already has `__provided__` defined",
+    ):
+
+        @provided(scope="transient")
+        @provided(scope="singleton")
+        class Service:
+            pass
+
+
+def test_duplicate_singleton_decorator_error() -> None:
+    with pytest.raises(
+        TypeError,
+        match="Class `Service` already has `__provided__` defined",
+    ):
+
+        @singleton
+        @singleton
+        class Service:
+            pass
+
+
+def test_conflicting_scope_decorators_error() -> None:
+    with pytest.raises(
+        TypeError,
+        match="Class `Service` already has `__provided__` defined",
+    ):
+
+        @transient
+        @singleton
+        class Service:
+            pass
+
+
+def test_child_class_can_have_different_scope() -> None:
+    @singleton
+    class Base:
+        pass
+
+    @transient
+    class Child(Base):
+        pass
+
+    assert getattr(Base, "__provided__") == {"scope": "singleton"}
+    assert getattr(Child, "__provided__") == {"scope": "transient"}
+
+
+def test_decorator_on_class_with_manual_provided_error() -> None:
+    with pytest.raises(
+        TypeError,
+        match="Class `Service` already has `__provided__` defined",
+    ):
+
+        @singleton
+        class Service:
+            __provided__ = {"scope": "transient"}
+
+
 # provider decorator tests
 
 
