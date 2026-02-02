@@ -293,12 +293,15 @@ class TestContainerScanner:
     def test_scan_detects_recursive_scan_call(self, container: Container) -> None:
         """Test that recursive scan() calls are detected (e.g., via lazy proxy)."""
         scanner = Scanner(container)
-        # Simulate scan already in progress
-        scanner._scanning = True
+        # Simulate scan already in progress (class-level flag)
+        Scanner._scanning = True
 
-        with pytest.raises(RuntimeError) as exc_info:
-            scanner.scan("tests.scan_app")
+        try:
+            with pytest.raises(RuntimeError) as exc_info:
+                scanner.scan("tests.scan_app")
 
-        error_message = str(exc_info.value)
-        assert "scan() called recursively" in error_message
-        assert "Solutions:" in error_message
+            error_message = str(exc_info.value)
+            assert "scan() called recursively" in error_message
+            assert "Solutions:" in error_message
+        finally:
+            Scanner._scanning = False
