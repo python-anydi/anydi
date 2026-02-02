@@ -56,9 +56,8 @@ class Resolver:
         canonical_type = self._container.aliases.get(dependency_type)
         if canonical_type is not None:
             self._overrides[canonical_type] = instance
-        for alias, canon in self._container.aliases.items():
-            if canon == dependency_type:
-                self._overrides[alias] = instance
+        for alias in self._container.get_aliases_for(dependency_type):
+            self._overrides[alias] = instance
 
     def remove_override(self, dependency_type: Any) -> None:
         """Remove an override for a type, its canonical type, and all aliases."""
@@ -66,9 +65,8 @@ class Resolver:
         canonical_type = self._container.aliases.get(dependency_type)
         if canonical_type is not None:
             self._overrides.pop(canonical_type, None)
-        for alias, canon in self._container.aliases.items():
-            if canon == dependency_type:
-                self._overrides.pop(alias, None)
+        for alias in self._container.get_aliases_for(dependency_type):
+            self._overrides.pop(alias, None)
 
     def clear_caches(self) -> None:
         """Clear all cached resolvers."""
