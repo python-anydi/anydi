@@ -301,6 +301,16 @@ class TestContainerRegistration:
         with pytest.raises(ValueError, match="Alias .* is already registered"):
             container.alias(IService, ServiceB)
 
+    def test_alias_unregistered_provider_error(self, container: Container) -> None:
+        class IService:
+            pass
+
+        class ServiceImpl:
+            pass
+
+        with pytest.raises(ValueError, match="provider for .* is not registered"):
+            container.alias(IService, ServiceImpl)
+
     def test_alias_after_build_error(self, container: Container) -> None:
         container.register(str, lambda: "test", scope="singleton")
         container.build()
@@ -794,6 +804,25 @@ class TestContainerRegistration:
     def test_unregister_not_registered_provider(self, container: Container) -> None:
         with pytest.raises(LookupError, match="The provider `str` is not registered."):
             container.unregister(str)
+
+    def test_unregister_provider_removes_aliases(self, container: Container) -> None:
+        class IService:
+            pass
+
+        class ServiceImpl(IService):
+            pass
+
+        container.register(ServiceImpl, scope="singleton", alias=IService)
+
+        assert container.is_registered(ServiceImpl)
+        assert container.is_registered(IService)
+        assert IService in container.aliases
+
+        container.unregister(ServiceImpl)
+
+        assert not container.is_registered(ServiceImpl)
+        assert not container.is_registered(IService)
+        assert IService not in container.aliases
 
     # Lifespan
 

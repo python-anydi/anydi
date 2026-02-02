@@ -406,6 +406,11 @@ class Container:
                 f"Alias `{type_repr(alias_type)}` is already registered "
                 f"for `{type_repr(self._aliases[alias_type])}`."
             )
+        if canonical_type not in self._providers:
+            raise ValueError(
+                f"Cannot create alias: provider for `{type_repr(canonical_type)}` "
+                "is not registered. Register the provider first."
+            )
         self._aliases[alias_type] = canonical_type
         self._aliases_by_canonical[canonical_type].add(alias_type)
 
@@ -842,6 +847,9 @@ class Container:
             del self._providers[provider.dependency_type]
         if provider.is_resource:
             self._resources[provider.scope].remove(provider.dependency_type)
+        # Remove aliases pointing to this provider
+        for alias in self._aliases_by_canonical.pop(provider.dependency_type, set()):
+            self._aliases.pop(alias, None)
 
     # == Instance Resolution ==
 
@@ -1048,7 +1056,7 @@ class Container:
                         # Register aliases if specified
                         provided_meta = param_dependency_type.__provided__
                         for alias_type in to_list(provided_meta.get("alias")):
-                            self._aliases[alias_type] = param_dependency_type
+                            self.alias(alias_type, param_dependency_type)
                     elif param.has_default:
                         # Has default, can be missing
                         resolved_params.append(param)
