@@ -33,6 +33,7 @@ class Scanner:
     def __init__(self, container: Container) -> None:
         self._container = container
         self._importing_modules: set[str] = set()
+        self._scanning = False
 
     def scan(
         self,
@@ -43,6 +44,31 @@ class Scanner:
         ignore: PackageOrIterable | None = None,
     ) -> None:
         """Scan packages or modules for decorated members and inject dependencies."""
+        if self._scanning:
+            raise RuntimeError(
+                "Circular import detected: scan() called recursively!\n\n"
+                "This happens when a scanned module triggers container creation "
+                "(e.g., via lazy proxy).\n\n"
+                "Solutions:\n"
+                "- Add the problematic module to scan() ignore list\n"
+                "- Move container imports inside functions (lazy import)\n"
+                "- Avoid lazy container initialization in scanned modules"
+            )
+
+        self._scanning = True
+        try:
+            self._do_scan(packages, tags=tags, ignore=ignore)
+        finally:
+            self._scanning = False
+
+    def _do_scan(
+        self,
+        packages: PackageOrIterable,
+        *,
+        tags: Iterable[str] | None = None,
+        ignore: PackageOrIterable | None = None,
+    ) -> None:
+        """Internal scan implementation."""
         if isinstance(packages, (ModuleType, str)):
             packages = [packages]
 
