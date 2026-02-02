@@ -5,6 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from anydi import Container, singleton
+from anydi._scanner import Scanner
 
 from tests.fixtures import Service
 from tests.scan_app import ScanAppModule
@@ -273,3 +274,18 @@ class TestContainerScanner:
 
         # a1_handlers should be scanned
         assert hasattr(a1_handlers.a1_handler, "__wrapped__")
+
+    def test_scan_detects_circular_import(self, container: Container) -> None:
+        """Test that circular imports during scanning are detected."""
+        scanner = Scanner(container)
+        # Simulate a module already being in the import chain
+        scanner._importing_modules.add("tests.scan_app.circular_module")
+
+        with pytest.raises(RuntimeError) as exc_info:
+            # This should raise because the module is already being imported
+            list(scanner._import_module_with_tracking("tests.scan_app.circular_module"))
+
+        error_message = str(exc_info.value)
+        assert "Circular import detected" in error_message
+        assert "tests.scan_app.circular_module" in error_message
+        assert "Solutions:" in error_message
