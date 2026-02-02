@@ -58,6 +58,7 @@ class Container:
 
         self._resources: dict[str, list[Any]] = defaultdict(list)
         self._aliases: dict[Any, Any] = {}  # alias_type → canonical_type
+        self._aliases_by_canonical: dict[Any, set[Any]] = defaultdict(set)
         self._singleton_context = InstanceContext()
         self._scoped_context: dict[str, ContextVar[InstanceContext]] = {}
 
@@ -406,10 +407,15 @@ class Container:
                 f"for `{type_repr(self._aliases[alias_type])}`."
             )
         self._aliases[alias_type] = canonical_type
+        self._aliases_by_canonical[canonical_type].add(alias_type)
 
     def _resolve_alias(self, dependency_type: Any) -> Any:
         """Resolve an alias to its canonical type."""
         return self._aliases.get(dependency_type, dependency_type)
+
+    def get_aliases_for(self, canonical_type: Any, /) -> set[Any]:
+        """Get all aliases that point to the given canonical type."""
+        return self._aliases_by_canonical.get(canonical_type, set())
 
     def is_registered(self, dependency_type: Any, /) -> bool:
         """Check if a provider is registered for the specified dependency type."""
@@ -722,20 +728,23 @@ class Container:
                 # Check if it's a @provided class
                 if inspect.isclass(dependency_type) and is_provided(dependency_type):
                     provided_scope = dependency_type.__provided__["scope"]
+                    from_context = dependency_type.__provided__.get(
+                        "from_context", False
+                    )
 
                     # Auto-register @provided class
                     dep_provider = self._register_provider(
                         dependency_type,
                         dependency_type,
                         provided_scope,
-                        False,
+                        from_context,
                         False,
                         None,
                     )
                     # Register aliases if specified
                     aliases = to_list(dependency_type.__provided__.get("alias"))
                     for alias_type in aliases:
-                        self._aliases[alias_type] = dependency_type
+                        self.alias(alias_type, dependency_type)
                     # Recursively ensure the @provided class is resolved
                     dep_provider = self._ensure_provider_resolved(
                         dep_provider, resolving

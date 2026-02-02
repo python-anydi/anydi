@@ -53,9 +53,9 @@ class Resolver:
     def add_override(self, dependency_type: Any, instance: Any) -> None:
         """Add an override for a type, its canonical type, and all aliases."""
         self._overrides[dependency_type] = instance
-        canonical = self._container.aliases.get(dependency_type)
-        if canonical is not None:
-            self._overrides[canonical] = instance
+        canonical_type = self._container.aliases.get(dependency_type)
+        if canonical_type is not None:
+            self._overrides[canonical_type] = instance
         for alias, canon in self._container.aliases.items():
             if canon == dependency_type:
                 self._overrides[alias] = instance
@@ -63,9 +63,9 @@ class Resolver:
     def remove_override(self, dependency_type: Any) -> None:
         """Remove an override for a type, its canonical type, and all aliases."""
         self._overrides.pop(dependency_type, None)
-        canonical = self._container.aliases.get(dependency_type)
-        if canonical is not None:
-            self._overrides.pop(canonical, None)
+        canonical_type = self._container.aliases.get(dependency_type)
+        if canonical_type is not None:
+            self._overrides.pop(canonical_type, None)
         for alias, canon in self._container.aliases.items():
             if canon == dependency_type:
                 self._overrides.pop(alias, None)
@@ -104,10 +104,10 @@ class Resolver:
             if param.provider is not None:
                 # Look up the current provider to handle overrides
                 # Resolve alias to canonical type if needed
-                dependency_type = self._container.aliases.get(
+                canonical_type = self._container.aliases.get(
                     param.dependency_type, param.dependency_type
                 )
-                current_provider = self._container.providers.get(dependency_type)
+                current_provider = self._container.providers.get(canonical_type)
                 if current_provider is not None:
                     self.compile(current_provider, is_async=is_async)
                 else:
@@ -121,10 +121,9 @@ class Resolver:
         # Store the compiled functions in the cache
         cache[provider.dependency_type] = compiled
 
-        # Also store under all aliases that point to this type
-        for alias, canonical in self._container.aliases.items():
-            if canonical == provider.dependency_type:
-                cache[alias] = compiled
+        # Also store under aliases that point to this canonical type
+        for alias in self._container.get_aliases_for(provider.dependency_type):
+            cache[alias] = compiled
 
         return compiled
 
@@ -203,10 +202,10 @@ class Resolver:
             if param.provider is not None:
                 # Look up the current provider from the container to handle overrides
                 # Resolve alias to canonical type if needed
-                dependency_type = self._container.aliases.get(
+                canonical_type = self._container.aliases.get(
                     param.dependency_type, param.dependency_type
                 )
-                current_provider = self._container.providers.get(dependency_type)
+                current_provider = self._container.providers.get(canonical_type)
                 if current_provider is not None:
                     compiled = cache.get(current_provider.dependency_type)
                 else:
