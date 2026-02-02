@@ -32,6 +32,7 @@ class ScannedDependency:
 class Scanner:
     def __init__(self, container: Container) -> None:
         self._container = container
+        self._importing_modules: set[str] = set()
 
     def scan(
         self,
@@ -118,7 +119,36 @@ class Scanner:
                 package.__path__, prefix=package.__name__ + "."
             ):
                 if not self._should_ignore_module(module_info.name, ignore_prefixes):
-                    yield importlib.import_module(module_info.name)
+                    yield from self._import_module_with_tracking(module_info.name)
+
+    def _import_module_with_tracking(self, module_name: str) -> Iterator[ModuleType]:
+        """Import a module while tracking for circular imports."""
+        # Check if we're already importing this module (circular import)
+        if module_name in self._importing_modules:
+            import_chain = " -> ".join(sorted(self._importing_modules))
+            raise RuntimeError(
+                f"Circular import detected during container scanning!\n"
+                f"Module '{module_name}' is being imported while already "
+                f"in the import chain.\n"
+                f"Import chain: {import_chain} -> {module_name}\n\n"
+                f"This usually happens when:\n"
+                f"1. A scanned module imports the container at module level\n"
+                f"2. The container creation triggers scanning\n"
+                f"3. Scanning tries to import the module again\n\n"
+                f"Solutions:\n"
+                f"- Add '{module_name}' to the ignore list\n"
+                f"- Move container imports inside functions (lazy import)\n"
+                f"- Check for modules importing the container module"
+            )
+
+        # Track that we're importing this module
+        self._importing_modules.add(module_name)
+        try:
+            module = importlib.import_module(module_name)
+            yield module
+        finally:
+            # Always cleanup, even if import fails
+            self._importing_modules.discard(module_name)
 
     def _scan_module_for_provided(self, module: ModuleType) -> list[type[Provided]]:
         """Scan a module for @provided classes."""

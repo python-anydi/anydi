@@ -287,6 +287,25 @@ The `ignore` parameter accepts:
 
 When a package is ignored, all its submodules are also ignored.
 
+### Circular import detection
+
+If a scanned module imports the container at module level, it can trigger another `scan()` call, creating an infinite loop. `AnyDI` detects this and raises a `RuntimeError` with a helpful message.
+
+```python
+# myapp/services.py - this module is being scanned
+from myapp.container import container  # <- triggers scan() again, causing loop
+
+@singleton
+class MyService:
+    pass
+```
+
+**Solutions:**
+
+- **Use lazy imports** - import container inside functions, not at module level
+- **Use the ignore list**: `container.scan("myapp", ignore=["myapp.services"])`
+- **Separate container definition** - keep container in a module that doesn't get scanned
+
 ---
 
 **Related Topics:**
