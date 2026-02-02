@@ -1,6 +1,6 @@
 [project]
 name = "anydi"
-version = "0.71.0"
+version = "0.72.0"
 description = "Dependency Injection library"
 authors = [{ name = "Anton Ruhlov", email = "antonruhlov@gmail.com" }]
 requires-python = ">=3.10.0, <3.15"
