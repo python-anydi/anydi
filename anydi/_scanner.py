@@ -30,7 +30,7 @@ class ScannedDependency:
 
 
 class Scanner:
-    _scanning: bool = False  # Shared across all instances
+    _scanning_packages: set[str] = set()
 
     def __init__(self, container: Container) -> None:
         self._container = container
@@ -45,9 +45,15 @@ class Scanner:
         ignore: PackageOrIterable | None = None,
     ) -> None:
         """Scan packages or modules for decorated members and inject dependencies."""
-        if Scanner._scanning:
+        if isinstance(packages, (ModuleType, str)):
+            packages = [packages]
+
+        pkg_names = {p if isinstance(p, str) else p.__name__ for p in packages}
+        overlap = pkg_names & Scanner._scanning_packages
+        if overlap:
             raise RuntimeError(
-                "Circular import detected: scan() called recursively!\n\n"
+                f"Circular import detected: scan() called recursively!\n\n"
+                f"Already scanning packages: {', '.join(sorted(overlap))}\n\n"
                 "This happens when a scanned module triggers container creation "
                 "(e.g., via lazy proxy).\n\n"
                 "Solutions:\n"
@@ -56,11 +62,11 @@ class Scanner:
                 "- Avoid lazy container initialization in scanned modules"
             )
 
-        Scanner._scanning = True
+        Scanner._scanning_packages.update(pkg_names)
         try:
             self._do_scan(packages, tags=tags, ignore=ignore)
         finally:
-            Scanner._scanning = False
+            Scanner._scanning_packages -= pkg_names
 
     def _do_scan(
         self,
