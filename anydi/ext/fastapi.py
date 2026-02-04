@@ -16,7 +16,7 @@ from anydi._marker import Marker, extend_marker
 
 from .starlette.middleware import RequestScopedMiddleware
 
-__all__ = ["install", "get_container", "Inject", "RequestScopedMiddleware"]
+__all__ = ["Inject", "RequestScopedMiddleware", "get_container", "install"]
 
 
 def get_container(connection: HTTPConnection) -> Container:
@@ -73,7 +73,7 @@ def _validate_route_dependencies(
 
 def install(app: FastAPI, container: Container) -> None:
     """Install AnyDI into a FastAPI application."""
-    app.state.container = container  # noqa
+    app.state.container = container
 
     # Register websocket scope with request as parent if not already registered
     if not container.has_scope("websocket"):

@@ -12,7 +12,7 @@ T = TypeVar("T")
 class Marker:
     """Marker stored in annotations or defaults to request injection."""
 
-    __slots__ = ("_dependency_type", "_attrs", "_preferred_owner", "_current_owner")
+    __slots__ = ("_attrs", "_current_owner", "_dependency_type", "_preferred_owner")
 
     _FRAMEWORK_ATTRS = frozenset({"dependency", "use_cache", "cast", "cast_result"})
 

@@ -18,17 +18,17 @@ if TYPE_CHECKING:
     from faststream._internal.types import AnyMsg
 
 __all__ = [
-    "install",
-    "get_container",
-    "get_container_from_context",
     "Inject",
     "RequestScopedMiddleware",
+    "get_container",
+    "get_container_from_context",
+    "install",
 ]
 
 
 def get_container(broker: BrokerUsecase[Any, Any]) -> Container:
     """Get the AnyDI container from a FastStream broker."""
-    return cast(Container, getattr(broker, "_container"))  # noqa
+    return cast(Container, getattr(broker, "_container"))
 
 
 def get_container_from_context(context: ContextRepo) -> Container:
@@ -77,7 +77,7 @@ def install(broker: BrokerUsecase[Any, Any], container: Container) -> None:
     """Install AnyDI into a FastStream broker."""
     broker._container = container  # type: ignore
     for handler in _get_broker_handlers(broker):
-        call = handler._original_call  # noqa
+        call = handler._original_call
         for parameter in inspect.signature(call, eval_str=True).parameters.values():
             _, should_inject, marker = container.validate_injected_parameter(
                 parameter, call=call

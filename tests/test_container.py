@@ -5,7 +5,7 @@ import threading
 import uuid
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, Generic, TypeVar
 from unittest import mock
 
 import pytest
@@ -147,7 +147,7 @@ class TestContainerRegistration:
 
     def test_register_with_none(self, container: Container) -> None:
         with pytest.raises(
-            TypeError, match="Missing `(.*?)` provider return annotation."
+            TypeError, match=r"Missing `(.*?)` provider return annotation."
         ):
             container.register(None, lambda: "hello", scope="singleton")
 
@@ -156,14 +156,16 @@ class TestContainerRegistration:
             return "hello"
 
         with pytest.raises(
-            TypeError, match="Missing `(.*?)` provider return annotation."
+            TypeError, match=r"Missing `(.*?)` provider return annotation."
         ):
             container.register(factory=provide_message, scope="singleton")
 
     def test_register_not_callable(self, container: Container) -> None:
         with pytest.raises(
             TypeError,
-            match="The provider `Test` is invalid because it is not a callable object.",
+            match=(
+                r"The provider `Test` is invalid because it is not a callable object."
+            ),
         ):
             container.register("Test", scope="singleton")  # type: ignore
 
@@ -171,7 +173,7 @@ class TestContainerRegistration:
         with pytest.raises(
             TypeError,
             match=(
-                "Cannot use `(.*?)` resource type annotation without actual "
+                r"Cannot use `(.*?)` resource type annotation without actual "
                 "type argument."
             ),
         ):
@@ -193,7 +195,7 @@ class TestContainerRegistration:
         with pytest.raises(
             TypeError,
             match=(
-                "The resource provider `(.*?)` is attempting to "
+                r"The resource provider `(.*?)` is attempting to "
                 "register with a transient scope, which is not allowed."
             ),
         ):
@@ -207,7 +209,7 @@ class TestContainerRegistration:
             return Service(ident=ident)
 
         with pytest.raises(
-            TypeError, match="Missing provider `(.*?)` dependency `ident` annotation."
+            TypeError, match=r"Missing provider `(.*?)` dependency `ident` annotation."
         ):
             container.register(service, scope="singleton")
 
@@ -219,7 +221,9 @@ class TestContainerRegistration:
 
         with pytest.raises(
             TypeError,
-            match="Positional-only parameters are not allowed in the provider `(.*?)`.",
+            match=(
+                r"Positional-only parameters are not allowed in the provider `(.*?)`."
+            ),
         ):
             container.register(provider_message, scope="singleton")
 
@@ -227,7 +231,7 @@ class TestContainerRegistration:
         container.register(str, lambda: "test", scope="singleton")
 
         with pytest.raises(
-            LookupError, match="The provider `str` is already registered."
+            LookupError, match=r"The provider `str` is already registered."
         ):
             container.register(str, lambda: "other", scope="singleton")
 
@@ -280,7 +284,7 @@ class TestContainerRegistration:
 
     def test_alias_same_type_error(self, container: Container) -> None:
         with pytest.raises(
-            ValueError, match="Alias type cannot be the same as canonical type."
+            ValueError, match=r"Alias type cannot be the same as canonical type."
         ):
             container.alias(str, str)
 
@@ -298,7 +302,7 @@ class TestContainerRegistration:
         container.register(ServiceB, scope="singleton")
         container.alias(IService, ServiceA)
 
-        with pytest.raises(ValueError, match="Alias .* is already registered"):
+        with pytest.raises(ValueError, match=r"Alias .* is already registered"):
             container.alias(IService, ServiceB)
 
     def test_alias_unregistered_provider_error(self, container: Container) -> None:
@@ -308,7 +312,7 @@ class TestContainerRegistration:
         class ServiceImpl:
             pass
 
-        with pytest.raises(ValueError, match="provider for .* is not registered"):
+        with pytest.raises(ValueError, match=r"provider for .* is not registered"):
             container.alias(IService, ServiceImpl)
 
     def test_alias_after_build_error(self, container: Container) -> None:
@@ -317,7 +321,7 @@ class TestContainerRegistration:
 
         with pytest.raises(
             RuntimeError,
-            match="Cannot register aliases after build\\(\\) has been called.",
+            match=r"Cannot register aliases after build\(\) has been called.",
         ):
             container.alias(int, str)
 
@@ -433,7 +437,7 @@ class TestContainerRegistration:
         with pytest.raises(
             TypeError,
             match=(
-                "The resource provider `(.*?)` is attempting to register "
+                r"The resource provider `(.*?)` is attempting to register "
                 "with a transient scope, which is not allowed."
             ),
         ):
@@ -449,7 +453,7 @@ class TestContainerRegistration:
         with pytest.raises(
             TypeError,
             match=(
-                "The resource provider `(.*?)` is attempting to register with a "
+                r"The resource provider `(.*?)` is attempting to register with a "
                 "transient scope, which is not allowed."
             ),
         ):
@@ -478,7 +482,9 @@ class TestContainerRegistration:
     def test_register_invalid_provider_type(self, container: Container) -> None:
         with pytest.raises(
             TypeError,
-            match="The provider `Test` is invalid because it is not a callable object.",
+            match=(
+                r"The provider `Test` is invalid because it is not a callable object."
+            ),
         ):
             container.register(str, "Test", scope="singleton")  # type: ignore
 
@@ -557,8 +563,8 @@ class TestContainerRegistration:
         with pytest.raises(
             ValueError,
             match=(
-                "The provider `(.*?)` with a `singleton` scope cannot depend on "
-                "`(.*?)` with a `request` scope. Please ensure all providers are "
+                r"The provider `(.*?)` with a `singleton` scope cannot depend on "
+                r"`(.*?)` with a `request` scope. Please ensure all providers are "
                 "registered with matching scopes."
             ),
         ):
@@ -700,7 +706,7 @@ class TestContainerRegistration:
         container.register(str, provider_with_param, scope="singleton")
 
         with pytest.raises(
-            LookupError, match="The provider `(.*?)` depends on `param` of type `int`"
+            LookupError, match=r"The provider `(.*?)` depends on `param` of type `int`"
         ):
             container.resolve(str)
 
@@ -715,7 +721,7 @@ class TestContainerRegistration:
 
         with pytest.raises(
             ValueError,
-            match="The provider `(.*?)` with a `singleton` scope cannot depend on",
+            match=r"The provider `(.*?)` with a `singleton` scope cannot depend on",
         ):
             container.resolve(str)
 
@@ -802,7 +808,7 @@ class TestContainerRegistration:
         assert not container.is_registered(str)
 
     def test_unregister_not_registered_provider(self, container: Container) -> None:
-        with pytest.raises(LookupError, match="The provider `str` is not registered."):
+        with pytest.raises(LookupError, match=r"The provider `str` is not registered."):
             container.unregister(str)
 
     def test_unregister_provider_removes_aliases(self, container: Container) -> None:
@@ -875,7 +881,7 @@ class TestContainerBuild:
 
         with pytest.raises(
             RuntimeError,
-            match="Cannot register providers after build\\(\\) has been called.",
+            match=r"Cannot register providers after build\(\) has been called.",
         ):
             container.register(AnotherService)
 
@@ -974,8 +980,8 @@ class TestContainerBuild:
         with pytest.raises(
             ValueError,
             match=(
-                "Circular dependency detected: .* -> .* -> .*\\. "
-                "Please restructure your dependencies to break the cycle\\."
+                r"Circular dependency detected: .* -> .* -> .*\. "
+                r"Please restructure your dependencies to break the cycle\."
             ),
         ):
             container.build()
@@ -1196,7 +1202,7 @@ class TestContainerResolution:
         with pytest.raises(
             TypeError,
             match=(
-                "The instance for the provider `str` cannot be created "
+                r"The instance for the provider `str` cannot be created "
                 "in synchronous mode."
             ),
         ):
@@ -1279,7 +1285,7 @@ class TestContainerResolution:
         with pytest.raises(
             TypeError,
             match=(
-                "The instance for the provider `str` cannot be created "
+                r"The instance for the provider `str` cannot be created "
                 "in synchronous mode."
             ),
         ):
@@ -1361,7 +1367,7 @@ class TestContainerResolution:
         with pytest.raises(
             LookupError,
             match=(
-                "The request context has not been started. Please ensure that the "
+                r"The request context has not been started. Please ensure that the "
                 "request context is properly initialized before attempting to use it."
             ),
         ):
@@ -1618,7 +1624,7 @@ class TestContainerResolution:
         with pytest.raises(
             TypeError,
             match=(
-                "The instance for the provider `uuid.UUID` cannot "
+                r"The instance for the provider `uuid.UUID` cannot "
                 "be created in synchronous mode."
             ),
         ):
@@ -1646,7 +1652,7 @@ class TestContainerResolution:
         with pytest.raises(
             LookupError,
             match=(
-                "The provider `str` is either not registered, not provided, "
+                r"The provider `str` is either not registered, not provided, "
                 "or not set in the scoped context. Please ensure that the provider "
                 "is properly registered and that the class is decorated "
                 "with a scope before attempting to use it."
@@ -1808,10 +1814,10 @@ class TestContainerResolution:
         with pytest.raises(
             LookupError,
             match=(
-                "The provider `(.*?)` depends on `name` of type "
-                "`str`, which has not been registered or set. To resolve this, "
-                "ensure that `name` is registered before "
-                "(calling build\\(\\)|resolving)."
+                r"The provider `(.*?)` depends on `name` of type "
+                r"`str`, which has not been registered or set. To resolve this, "
+                r"ensure that `name` is registered before "
+                r"(calling build\(\)|resolving)."
             ),
         ):
             container.resolve(Service)
@@ -1989,7 +1995,7 @@ class TestContainerResolution:
         # Try to resolve without build - should detect scope incompatibility
         with pytest.raises(
             ValueError,
-            match="cannot depend on.*with a.*scope",
+            match=r"cannot depend on.*with a.*scope",
         ):
             container.resolve(SingletonService)
 
@@ -2404,7 +2410,7 @@ class TestContainerLifecycle:
         def resource_provider() -> Iterator[Resource]:
             try:
                 yield resource
-            except Exception:  # noqa
+            except Exception:
                 resource.rollback()
                 raise
             else:
@@ -2431,7 +2437,7 @@ class TestContainerLifecycle:
         async def resource_provider() -> AsyncIterator[Resource]:
             try:
                 yield resource
-            except Exception:  # noqa
+            except Exception:
                 resource.rollback()
                 raise
             else:
@@ -2589,7 +2595,7 @@ class TestContainerCustomScopes:
 
         with pytest.raises(
             ValueError,
-            match="The scope `task` is already registered.",
+            match=r"The scope `task` is already registered.",
         ):
             container.register_scope("task")
 
@@ -2597,7 +2603,7 @@ class TestContainerCustomScopes:
         """Test registering a reserved scope 'singleton' raises error."""
         with pytest.raises(
             ValueError,
-            match="The scope `singleton` is reserved and cannot be overridden.",
+            match=r"The scope `singleton` is reserved and cannot be overridden.",
         ):
             container.register_scope("singleton")
 
@@ -2605,7 +2611,7 @@ class TestContainerCustomScopes:
         """Test registering a reserved scope 'transient' raises error."""
         with pytest.raises(
             ValueError,
-            match="The scope `transient` is reserved and cannot be overridden.",
+            match=r"The scope `transient` is reserved and cannot be overridden.",
         ):
             container.register_scope("transient")
 
@@ -2615,7 +2621,7 @@ class TestContainerCustomScopes:
         """Test registering a custom scope with non-existent parent raises error."""
         with pytest.raises(
             ValueError,
-            match="The parent scope `nonexistent` is not registered.",
+            match=r"The parent scope `nonexistent` is not registered.",
         ):
             container.register_scope("task", parents=["nonexistent"])
 
@@ -2637,7 +2643,7 @@ class TestContainerCustomScopes:
         with pytest.raises(
             LookupError,
             match=(
-                "The task context has not been started. "
+                r"The task context has not been started. "
                 "Please ensure that the task context is properly initialized "
                 "before attempting to use it."
             ),
@@ -2795,8 +2801,8 @@ class TestContainerCustomScopes:
         with pytest.raises(
             ValueError,
             match=(
-                "The provider .* with a `task` scope "
-                "cannot depend on .* with a `transient` scope"
+                r"The provider .* with a `task` scope "
+                r"cannot depend on .* with a `transient` scope"
             ),
         ):
             container.build()
@@ -2973,7 +2979,7 @@ class TestContainerCustomScopes:
         """Test that getting context var for singleton scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `singleton`.",
+            match=r"Cannot get context variable for reserved scope `singleton`.",
         ):
             container._get_scoped_context_var("singleton")
 
@@ -2983,7 +2989,7 @@ class TestContainerCustomScopes:
         """Test that getting context var for transient scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `transient`.",
+            match=r"Cannot get context variable for reserved scope `transient`.",
         ):
             container._get_scoped_context_var("transient")
 
@@ -2994,7 +3000,7 @@ class TestContainerCustomScopes:
         with pytest.raises(
             ValueError,
             match=(
-                "Cannot get context variable for not registered scope `unregistered`. "
+                r"Cannot get context variable for not registered scope `unregistered`. "
                 "Please register the scope first using register_scope()."
             ),
         ):
@@ -3006,7 +3012,7 @@ class TestContainerCustomScopes:
         """Test that scoped_context with singleton scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `singleton`.",
+            match=r"Cannot get context variable for reserved scope `singleton`.",
         ):
             with container.scoped_context("singleton"):
                 pass
@@ -3017,7 +3023,7 @@ class TestContainerCustomScopes:
         """Test that scoped_context with transient scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `transient`.",
+            match=r"Cannot get context variable for reserved scope `transient`.",
         ):
             with container.scoped_context("transient"):
                 pass
@@ -3029,7 +3035,7 @@ class TestContainerCustomScopes:
         with pytest.raises(
             ValueError,
             match=(
-                "Cannot get context variable for not registered scope `unknown`. "
+                r"Cannot get context variable for not registered scope `unknown`. "
                 "Please register the scope first using register_scope()."
             ),
         ):
@@ -3042,7 +3048,7 @@ class TestContainerCustomScopes:
         """Test that ascoped_context with singleton scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `singleton`.",
+            match=r"Cannot get context variable for reserved scope `singleton`.",
         ):
             async with container.ascoped_context("singleton"):
                 pass
@@ -3053,7 +3059,7 @@ class TestContainerCustomScopes:
         """Test that ascoped_context with transient scope raises error."""
         with pytest.raises(
             ValueError,
-            match="Cannot get context variable for reserved scope `transient`.",
+            match=r"Cannot get context variable for reserved scope `transient`.",
         ):
             async with container.ascoped_context("transient"):
                 pass
@@ -3065,7 +3071,7 @@ class TestContainerCustomScopes:
         with pytest.raises(
             ValueError,
             match=(
-                "Cannot get context variable for not registered scope `unknown`. "
+                r"Cannot get context variable for not registered scope `unknown`. "
                 "Please register the scope first using register_scope()."
             ),
         ):
@@ -3273,7 +3279,7 @@ class TestContainerInjector:
             return name  # type: ignore
 
         with pytest.raises(
-            TypeError, match="Missing `(.*?).handler` parameter `name` annotation."
+            TypeError, match=r"Missing `(.*?).handler` parameter `name` annotation."
         ):
             container.inject(handler)
 
@@ -3286,7 +3292,7 @@ class TestContainerInjector:
         with pytest.raises(
             LookupError,
             match=(
-                "`(.*?).handler` has an unknown dependency parameter `message` "
+                r"`(.*?).handler` has an unknown dependency parameter `message` "
                 "with an annotation of `str`."
             ),
         ):
@@ -3421,7 +3427,7 @@ class TestContainerOverride:
         container = Container()
         container.enable_test_mode()
 
-        with pytest.raises(LookupError, match="The provider `str` is not registered."):
+        with pytest.raises(LookupError, match=r"The provider `str` is not registered."):
             with container.override(str, "test"):
                 pass
 
@@ -3805,3 +3811,105 @@ class TestImportContainer:
 
         with pytest.raises(ImportError, match="Expected Container instance"):
             import_container("tests.test_container:_TestService")
+
+
+# Generic TypeVar resolution test fixtures
+ModelT = TypeVar("ModelT", bound="Model")
+U = TypeVar("U")
+V = TypeVar("V")
+
+
+class Model:
+    pass
+
+
+class User(Model):
+    pass
+
+
+class Guest(Model):
+    pass
+
+
+class Repository(Generic[ModelT]):
+    pass
+
+
+class UserRepository(Repository[User]):
+    pass
+
+
+class TestContainerGenericResolution:
+    """Tests for generic TypeVar resolution in container."""
+
+    def test_resolve_generic_handler(self) -> None:
+        """Test resolving a class that inherits from a generic base."""
+
+        class Handler(Generic[ModelT]):
+            def __init__(self, repo: Repository[ModelT]) -> None:
+                self.repo = repo
+
+        class UserHandler(Handler[User]):
+            pass
+
+        container = Container()
+        container.register(UserRepository, alias=Repository[User])
+        container.register(UserHandler)
+
+        handler = container.resolve(UserHandler)
+        assert isinstance(handler, UserHandler)
+        assert isinstance(handler.repo, UserRepository)
+
+    def test_resolve_multi_level_generic(self) -> None:
+        """Test resolving with multi-level generic inheritance."""
+
+        class Service(Generic[U]):
+            def __init__(self, repo: Repository[U]) -> None:  # type: ignore[type-var]
+                self.repo = repo
+
+        class MiddleUserService(Service[User]):
+            pass
+
+        class FinalService(MiddleUserService):
+            pass
+
+        container = Container()
+        container.register(UserRepository, alias=Repository[User])
+        container.register(FinalService)
+
+        service = container.resolve(FinalService)
+        assert isinstance(service, FinalService)
+        assert isinstance(service.repo, UserRepository)
+
+    def test_resolve_multiple_type_params(self) -> None:
+        """Test resolving with multiple type parameters."""
+
+        class Processor(Generic[U, V]):
+            def __init__(self, input_repo: Repository[U]) -> None:  # type: ignore[type-var]
+                self.input_repo = input_repo
+
+        class UserGuestProcessor(Processor[User, Guest]):
+            pass
+
+        container = Container()
+        container.register(UserRepository, alias=Repository[User])
+        container.register(UserGuestProcessor)
+
+        processor = container.resolve(UserGuestProcessor)
+        assert isinstance(processor, UserGuestProcessor)
+        assert isinstance(processor.input_repo, UserRepository)
+
+    def test_resolve_without_generic_base(self) -> None:
+        """Test that classes without generic bases work unchanged."""
+
+        class SimpleService:
+            def __init__(self, repo: UserRepository) -> None:
+                self.repo = repo
+
+        container = Container()
+        container.register(UserRepository)
+        container.register(SimpleService)
+
+        service = container.resolve(SimpleService)
+        assert isinstance(service, SimpleService)
+        assert isinstance(service.repo, UserRepository)

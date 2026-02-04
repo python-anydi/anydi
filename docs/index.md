@@ -27,6 +27,7 @@ Main features:
 * **Resource management**: Context manager protocol support for lifecycle management.
 * **Modular**: Container and module composition for large applications.
 * **Auto-scan**: Automatic discovery of injectable callables.
+* **Generic support**: Automatic TypeVar resolution for generic base classes.
 * **Framework integrations**: Extensions for popular frameworks.
 * **Testing**: Provider override mechanism for test isolation.
 
