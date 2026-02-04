@@ -83,7 +83,9 @@ class TestContainerModuleRegistrator:
     def test_register_module_invalid_path(self, container: Container) -> None:
         with pytest.raises(
             TypeError,
-            match="The module must be a callable, a module type, or a module instance.",
+            match=(
+                r"The module must be a callable, a module type, or a module instance."
+            ),
         ):
             container.register_module("anydi.Container")
 

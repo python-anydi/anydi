@@ -177,7 +177,7 @@ def test_get_container_no_fixture_no_config(
     monkeypatch.setattr(request.config, "getini", mock_getini)
 
     with pytest.raises(
-        pytest.FixtureLookupError, match="container.*fixture is not found"
+        pytest.FixtureLookupError, match=r"container.*fixture is not found"
     ):
         pytest_plugin._find_container(request)
 

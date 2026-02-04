@@ -150,7 +150,7 @@ class Resolver:
     ) -> None:
         """Add _create_instance call to generated resolver."""
         override_arg = "override_mode" if with_override else "False"
-        context_arg = context if context else "None"
+        context_arg = context or "None"
         store_arg = "True" if store else "False"
 
         if is_async:
@@ -604,7 +604,7 @@ class Resolver:
             defaults="defaults",
         )
 
-        lines = create_lines + [""] + resolver_lines + [""] + create_resolver_lines
+        lines = [*create_lines, "", *resolver_lines, "", *create_resolver_lines]
 
         src = "\n".join(lines)
 
@@ -716,7 +716,7 @@ class Resolver:
             f"Use context.set() instead.')"
         )
 
-        lines = resolver_lines + [""] + create_resolver_lines
+        lines = [*resolver_lines, "", *create_resolver_lines]
         src = "\n".join(lines)
 
         ns: dict[str, Any] = {
@@ -744,7 +744,7 @@ class Resolver:
             return instance
         return InstanceProxy(instance, dependency_type=dependency_type)
 
-    def _post_resolve_override(self, dependency_type: Any, instance: Any) -> Any:  # noqa: C901
+    def _post_resolve_override(self, dependency_type: Any, instance: Any) -> Any:
         """Hook for patching resolved instances to support override."""
         if dependency_type in self._overrides:
             return self._overrides[dependency_type]

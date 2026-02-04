@@ -223,6 +223,65 @@ notifier.notify("user@example.com", "Welcome!")
 2. **Maintainability**: Adding new dependencies doesn't require updating registration code
 3. **Flexibility**: Can override specific dependencies while others auto-register
 
+## Generic inheritance support
+
+`AnyDI` automatically resolves TypeVars when a class inherits from a generic base class. This means you don't need to redefine the constructor just to specify concrete types.
+
+```python
+from anydi import Container, singleton
+
+
+class User:
+    pass
+
+
+class Repository[T]:
+    pass
+
+
+class UserRepository(Repository[User]):
+    pass
+
+
+class Handler(Generic[T]):
+    def __init__(self, repo: Repository[T]) -> None:
+        self.repo = repo
+
+
+class UserHandler(Handler[User]):
+    pass  # No need to override __init__!
+
+
+container = Container()
+container.register(UserRepository, alias=Repository[User])
+container.register(UserHandler)
+
+# AnyDI resolves Repository[T] → Repository[User] automatically
+handler = container.resolve(UserHandler)
+assert isinstance(handler.repo, UserRepository)
+```
+
+This works with:
+
+- **Multi-level inheritance**: `A[T] → B[T] → C[User]`
+- **Multiple type parameters**: `Handler[T, U]` with partial specialization
+- **Nested generics**: `list[Repository[T]]` → `list[Repository[User]]`
+- **Union types**: `Repository[T] | None` → `Repository[User] | None`
+
+Without this feature, you would need to override the constructor in every subclass:
+
+```python
+# Before: verbose and repetitive
+class UserHandler(Handler["User"]):
+    def __init__(self, repo: Repository["User"]) -> None:
+        super().__init__(repo)
+
+
+# After: just inherit!
+class UserHandler(Handler["User"]):
+    pass
+```
+
 ## Limitations
 
 1. **Explicit is better**: For public APIs or library public APIs, explicit registration gives better documentation

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import Annotated, Any
 
-from pydantic.fields import ComputedFieldInfo, FieldInfo  # noqa
+from pydantic.fields import ComputedFieldInfo, FieldInfo
 from pydantic_settings import BaseSettings
 
 from anydi import Container

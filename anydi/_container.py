@@ -12,7 +12,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator, Sequence
 from contextvars import ContextVar
-from typing import Any, Literal, TypeVar, get_args, get_origin, overload
+from typing import Any, Literal, TypeVar, cast, get_args, get_origin, overload
 
 from typing_extensions import ParamSpec, Self, type_repr
 
@@ -29,9 +29,11 @@ from ._types import (
     NOT_SET,
     Event,
     Scope,
+    build_typevar_map,
     is_event_type,
     is_iterator_type,
     is_none_type,
+    resolve_typevars,
     to_list,
 )
 
@@ -571,6 +573,11 @@ class Container:
             # Process parameters (lazy - store without resolving dependencies)
             parameters: list[ProviderParameter] = []
 
+            # Build TypeVar map for generic class inheritance
+            typevar_map = (
+                build_typevar_map(cast(type[Any], factory)) if is_class else {}
+            )
+
             for param in signature.parameters.values():
                 if param.annotation is inspect.Parameter.empty:
                     raise TypeError(
@@ -596,7 +603,7 @@ class Container:
                 # Lazy registration: Store parameter without resolving dependencies
                 parameters.append(
                     ProviderParameter(
-                        dependency_type=param.annotation,
+                        dependency_type=resolve_typevars(param.annotation, typevar_map),
                         name=param.name,
                         default=default,
                         has_default=has_default,
@@ -1137,7 +1144,7 @@ class Container:
                 cycle_start = next(
                     i for i, name in enumerate(path) if name == str(provider)
                 )
-                cycle_path = " -> ".join(path[cycle_start:] + [str(provider)])
+                cycle_path = " -> ".join([*path[cycle_start:], str(provider)])
                 raise ValueError(
                     f"Circular dependency detected: {cycle_path}. "
                     f"Please restructure your dependencies to break the cycle."

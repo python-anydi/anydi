@@ -15,7 +15,7 @@ from ._types import NOT_SET
 class InstanceContext:
     """A context to store instances."""
 
-    __slots__ = ("_items", "_stack", "_async_stack", "_lock", "_async_lock")
+    __slots__ = ("_async_lock", "_async_stack", "_items", "_lock", "_stack")
 
     def __init__(self) -> None:
         self._items: dict[Any, Any] = {}

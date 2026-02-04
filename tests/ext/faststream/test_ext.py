@@ -21,7 +21,7 @@ def test_install_without_annotation() -> None:
         return message
 
     with pytest.raises(
-        TypeError, match="Missing `(.*?).say_hello` parameter `message` annotation."
+        TypeError, match=r"Missing `(.*?).say_hello` parameter `message` annotation."
     ):
         install(broker, container)
 
@@ -38,7 +38,7 @@ def test_install_unknown_annotation() -> None:
     with pytest.raises(
         LookupError,
         match=(
-            "`(.*?).say_hello` has an unknown dependency parameter `message` "
+            r"`(.*?).say_hello` has an unknown dependency parameter `message` "
             "with an annotation of `str`."
         ),
     ):
