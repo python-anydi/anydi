@@ -57,37 +57,13 @@ def to_list(value: Any) -> list[Any]:
 # Generic TypeVar utilities
 
 
-def build_typevar_map(cls: type[Any]) -> dict[TypeVar, type[Any]]:
+def build_typevar_map(
+    cls: type[Any], typevar_map: dict[TypeVar, type[Any]] | None = None
+) -> dict[TypeVar, type[Any]]:
     """Build a mapping from TypeVars to concrete types for a class."""
-    typevar_map: dict[TypeVar, type[Any]] = {}
-    _collect_typevar_mappings(cls, typevar_map)
-    return typevar_map
+    if typevar_map is None:
+        typevar_map = {}
 
-
-def _map_typevars_to_args(
-    type_params: tuple[Any, ...],
-    args: tuple[Any, ...],
-    typevar_map: dict[TypeVar, type[Any]],
-) -> None:
-    """Map TypeVar parameters to their corresponding type arguments."""
-    for i, type_param in enumerate(type_params):
-        if i >= len(args):
-            break
-        if not isinstance(type_param, TypeVar):
-            continue
-        arg: Any = args[i]
-        # If arg is itself a TypeVar, try to resolve it from existing map
-        if isinstance(arg, TypeVar):
-            if arg in typevar_map:
-                typevar_map[type_param] = typevar_map[arg]
-        else:
-            typevar_map[type_param] = arg
-
-
-def _collect_typevar_mappings(
-    cls: type[Any], typevar_map: dict[TypeVar, type[Any]]
-) -> None:
-    """Recursively collect TypeVar mappings from the class hierarchy."""
     orig_bases = getattr(cls, "__orig_bases__", ())
 
     for base in orig_bases:
@@ -95,7 +71,7 @@ def _collect_typevar_mappings(
         if origin is None:
             # Not a parameterized generic, check if it's a class with bases
             if isinstance(base, type):
-                _collect_typevar_mappings(base, typevar_map)
+                typevar_map = build_typevar_map(base, typevar_map)
             continue
 
         args = get_args(base)
@@ -109,11 +85,34 @@ def _collect_typevar_mappings(
             type_params = getattr(origin, "__type_params__", ())
 
         # Map each TypeVar to its corresponding argument
-        _map_typevars_to_args(type_params, args, typevar_map)
+        typevar_map = _map_typevars_to_args(type_params, args, typevar_map)
 
         # Recursively process the origin class
         if isinstance(origin, type):
-            _collect_typevar_mappings(origin, typevar_map)
+            typevar_map = build_typevar_map(origin, typevar_map)
+    return typevar_map
+
+
+def _map_typevars_to_args(
+    type_params: tuple[Any, ...],
+    args: tuple[Any, ...],
+    typevar_map: dict[TypeVar, type[Any]],
+) -> dict[TypeVar, type[Any]]:
+    """Map TypeVar parameters to their corresponding type arguments."""
+    new_map = typevar_map.copy()
+    for i, type_param in enumerate(type_params):
+        if i >= len(args):
+            break
+        if not isinstance(type_param, TypeVar):
+            continue
+        arg: Any = args[i]
+        # If arg is itself a TypeVar, try to resolve it from existing map
+        if isinstance(arg, TypeVar):
+            if arg in typevar_map:
+                new_map[type_param] = typevar_map[arg]
+        else:
+            new_map[type_param] = arg
+    return new_map
 
 
 def resolve_typevars(annotation: Any, typevar_map: dict[TypeVar, type[Any]]) -> Any:
