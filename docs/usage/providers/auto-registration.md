@@ -266,7 +266,6 @@ This works with:
 - **Multi-level inheritance**: `A[T] → B[T] → C[User]`
 - **Multiple type parameters**: `Handler[T, U]` with partial specialization
 - **Nested generics**: `list[Repository[T]]` → `list[Repository[User]]`
-- **Union types**: `Repository[T] | None` → `Repository[User] | None`
 
 Without this feature, you would need to override the constructor in every subclass:
 
