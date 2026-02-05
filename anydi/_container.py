@@ -18,6 +18,7 @@ from typing_extensions import ParamSpec, Self, type_repr
 
 from ._context import InstanceContext
 from ._decorators import is_provided
+from ._generics import build_typevar_map, resolve_typevars
 from ._graph import Graph
 from ._injector import Injector
 from ._marker import Marker
@@ -29,11 +30,9 @@ from ._types import (
     NOT_SET,
     Event,
     Scope,
-    build_typevar_map,
     is_event_type,
     is_iterator_type,
     is_none_type,
-    resolve_typevars,
     to_list,
 )
 
