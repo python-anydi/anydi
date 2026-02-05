@@ -1,6 +1,6 @@
 # Auto-Registration
 
-AnyDI can auto-register dependencies without explicit registration. When you resolve a decorated class, the container automatically registers and resolves its entire dependency tree.
+`AnyDI` can auto-register dependencies without explicit registration. When you resolve a decorated class, the container automatically registers and resolves its entire dependency tree.
 
 ## Decorators
 
@@ -128,7 +128,7 @@ with container.request_context() as ctx:
 
 ## Generic TypeVar Resolution
 
-AnyDI automatically resolves TypeVars when inheriting from generic base classes:
+`AnyDI` automatically resolves TypeVars when inheriting from generic base classes:
 
 ```python
 from typing import Generic, TypeVar
@@ -214,7 +214,7 @@ container.scan(".", ignore=[".api"])     # Relative ignore
 
 ### Circular import detection
 
-If a scanned module imports the container at module level, it triggers another `scan()` call. AnyDI detects this and raises `RuntimeError`.
+If a scanned module imports the container at module level, it triggers another `scan()` call. `AnyDI` detects this and raises `RuntimeError`.
 
 **Solutions:**
 
