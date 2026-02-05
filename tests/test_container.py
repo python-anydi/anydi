@@ -3,6 +3,7 @@ import inspect
 import logging
 import threading
 import uuid
+import warnings
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from typing import Annotated, Any, Generic, TypeVar
@@ -3422,6 +3423,39 @@ class TestContainerOverride:
                 assert container.resolve(str) == "overridden"
 
         assert container.resolve(str) == "original"
+
+    def test_override_not_working_without_test_mode_for_existing_instance(self) -> None:
+        """Test that override doesn't work for instance resolved before test_mode."""
+        container = Container()
+
+        @singleton
+        class Repository:
+            def get_data(self) -> str:
+                return "real"
+
+        @singleton
+        class Service:
+            def __init__(self, repo: Repository) -> None:
+                self.repo = repo
+
+            def process(self) -> str:
+                return self.repo.get_data()
+
+        # Resolve BEFORE enabling test_mode - compiled with with_override=False
+        # Dependencies are NOT wrapped in InstanceProxy
+        service = container.resolve(Service)
+        assert service.process() == "real"
+
+        class MockRepo:
+            def get_data(self) -> str:
+                return "mocked"
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with container.override(Repository, MockRepo()):
+                # Override does NOT work - still returns "real"
+                # because service.repo is a direct reference, not an InstanceProxy
+                assert service.process() == "real"
 
     def test_override_instance_provider_not_registered_using_strict_mode(self) -> None:
         container = Container()
