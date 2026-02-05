@@ -1,4 +1,4 @@
-from typing import Annotated, Generic, TypeVar
+from typing import Annotated, Generic, TypeVar, Union
 
 from anydi._generics import build_typevar_map, resolve_typevars
 
@@ -149,3 +149,130 @@ def test_resolve_union_with_nested_generic() -> None:
 
     result = resolve_typevars(Repository[V] | None, typevar_map)  # type: ignore[type-arg]
     assert result == Repository[User] | None
+
+
+def test_build_typevar_map_non_parameterized_base() -> None:
+    """Test traversal through non-parameterized base in __orig_bases__."""
+
+    V = TypeVar("V")
+    W = TypeVar("W")
+
+    class GenericParent(Generic[V]):
+        pass
+
+    class SpecializedParent(GenericParent[User]):
+        """This becomes a plain class in Combined's __orig_bases__."""
+
+        pass
+
+    class AnotherGeneric(Generic[W]):
+        pass
+
+    class Combined(SpecializedParent, AnotherGeneric[Guest]):
+        pass
+
+    typevar_map = build_typevar_map(Combined)
+    # V comes from recursing into SpecializedParent
+    assert typevar_map[V] is User
+    # W comes directly from AnotherGeneric[Guest]
+    assert typevar_map[W] is Guest
+
+
+def test_resolve_typing_union() -> None:
+    """Test typing.Union style union (lines 73-74)."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    result = resolve_typevars(Union[V, str], typevar_map)  # type: ignore  # noqa: UP007
+    assert result == Union[User, str]  # noqa: UP007
+
+
+def test_resolve_typing_union_with_none() -> None:
+    """Test typing.Union with None."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    result = resolve_typevars(Union[V, None], typevar_map)  # type: ignore  # noqa: UP007
+    assert result == Union[User, None]  # noqa: UP007
+
+
+def test_resolve_no_change_returns_original() -> None:
+    """Test unchanged args return original annotation."""
+    V = TypeVar("V")
+    W = TypeVar("W")
+    typevar_map = {W: User}  # V is not in the map
+    annotation = list[V]  # type: ignore[type-arg]
+    result = resolve_typevars(annotation, typevar_map)
+    # Since V is not resolved, args don't change, should return original
+    assert result is annotation
+
+
+def test_resolve_dict_type() -> None:
+    """Test resolving dict with TypeVars."""
+    K = TypeVar("K")
+    V = TypeVar("V")
+    typevar_map = {K: str, V: User}
+    result = resolve_typevars(dict[K, V], typevar_map)  # type: ignore[type-arg]
+    assert result == dict[str, User]
+
+
+def test_resolve_multiple_union_args() -> None:
+    """Test union with more than 2 types."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    result = resolve_typevars(V | str | int, typevar_map)
+    assert result == User | str | int
+
+
+def test_resolve_unchanged_generic_args() -> None:
+    """Test that unchanged args return original annotation (line 113)."""
+    V = TypeVar("V")
+    W = TypeVar("W")
+    typevar_map = {W: User}  # V not in map
+    original = list[V]  # type: ignore[type-arg]
+    result = resolve_typevars(original, typevar_map)
+    assert result is original
+
+
+def test_resolve_origin_without_args() -> None:
+    """Test annotation with origin but no args (line 106)."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    # Generic class itself has origin but no args
+    result = resolve_typevars(Generic, typevar_map)
+    assert result is Generic
+
+
+def test_resolve_union_type_syntax() -> None:
+    """Test types.UnionType (| syntax with generics) (lines 78-81)."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    # list[V] | int uses types.UnionType as origin
+    result = resolve_typevars(list[V] | int, typevar_map)  # type: ignore[type-arg]
+    assert result == list[User] | int
+
+
+def test_resolve_union_type_multiple_args() -> None:
+    """Test UnionType with multiple args (loop in lines 79-80)."""
+    V = TypeVar("V")
+    typevar_map = {V: User}
+    result = resolve_typevars(list[V] | int | str, typevar_map)  # type: ignore[type-arg]
+    assert result == list[User] | int | str
+
+
+def test_build_typevar_map_typevar_chain() -> None:
+    """Test TypeVar chain resolution."""
+
+    V = TypeVar("V")
+    W = TypeVar("W")
+
+    class A(Generic[V]):
+        pass
+
+    class B(Generic[W]):
+        pass
+
+    class C(A[str], B[V], Generic[V]):
+        pass
+
+    typevar_map = build_typevar_map(C)
+    assert typevar_map[V] is str
+    assert typevar_map[W] is str

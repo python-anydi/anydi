@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from types import UnionType
 from typing import Annotated, Any, TypeVar, Union, get_args, get_origin
 
 
-@lru_cache(maxsize=256)
 def build_typevar_map(cls: type[Any]) -> dict[TypeVar, type[Any]]:
     """Build a mapping from TypeVars to concrete types for a class."""
     typevar_map: dict[TypeVar, type[Any]] = {}
