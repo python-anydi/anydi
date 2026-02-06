@@ -2352,30 +2352,6 @@ class TestContainerContext:
         with container.request_context():
             assert container.create(int) == 1
 
-    def test_register_deprecated_interface(self, container: Container) -> None:
-        with pytest.warns(
-            DeprecationWarning,
-            match="The `interface` is deprecated. Use `dependency_type` instead.",
-        ):
-            container.register(interface=int, factory=lambda: 42)
-
-        assert container.resolve(int) == 42
-
-    def test_register_deprecated_call(self, container: Container) -> None:
-        with pytest.warns(
-            DeprecationWarning,
-            match="The `call` is deprecated. Use `factory` instead.",
-        ):
-            container.register(int, call=lambda: 42)
-
-        assert container.resolve(int) == 42
-
-    def test_register_deprecated_both(self, container: Container) -> None:
-        with pytest.warns(DeprecationWarning, match="is deprecated"):
-            container.register(interface=int, call=lambda: 42)
-
-        assert container.resolve(int) == 42
-
     def test_get_context_scopes_with_resources(self) -> None:
         """Test get_context_scopes includes scopes with resource providers."""
         container = Container()
@@ -3693,20 +3669,6 @@ class TestContainerOverride:
             resolved = container.resolve(int)
             assert resolved == instance
             assert not isinstance(resolved, InstanceProxy)
-
-    def test_override_deprecated_interface(self) -> None:
-        container = Container()
-        container.enable_test_mode()
-        container.register(int, factory=lambda: 0)
-
-        with pytest.warns(
-            DeprecationWarning,
-            match="The `interface` is deprecated. Use `dependency_type` instead.",
-        ):
-            with container.override(interface=int, instance=42):
-                assert container.resolve(int) == 42
-
-        assert container.resolve(int) == 0
 
     def test_override_canonical_resolves_via_alias(self) -> None:
         """Override canonical type, resolve via alias."""

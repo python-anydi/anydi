@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import enum
 import inspect
-import warnings
 from collections.abc import Callable
 from dataclasses import KW_ONLY, dataclass
 from typing import Any
@@ -78,27 +77,3 @@ class ProviderDef:
     from_context: bool = False
     scope: Scope = "singleton"
     alias: Any = NOT_SET
-    interface: Any = NOT_SET
-    call: Callable[..., Any] = NOT_SET
-
-    def __post_init__(self) -> None:
-        if self.interface is not NOT_SET:
-            warnings.warn(
-                "The `interface` is deprecated. Use `dependency_type` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if self.call is not NOT_SET:
-            warnings.warn(
-                "The `call` is deprecated. Use `factory` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if self.dependency_type is NOT_SET:
-            self.dependency_type = self.interface
-        if self.factory is NOT_SET:
-            self.factory = self.call
-
-        self.interface = self.dependency_type
-        self.call = self.factory

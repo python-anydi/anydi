@@ -253,23 +253,6 @@ anydi_autoinject = false
 anydi_autoinject = false
 ```
 
-### Deprecated: `@pytest.mark.inject`
-
-The `@pytest.mark.inject` marker is deprecated. Use `Provide[T]` instead:
-
-```python
-# Old way (deprecated)
-@pytest.mark.inject
-def test_service(service: Service) -> None:
-    ...
-
-# New way (recommended)
-def test_service(service: Provide[Service]) -> None:
-    ...
-```
-
-Using the deprecated marker shows a `DeprecationWarning`.
-
 ### Testing with `.create()`
 
 For more control over dependency injection in tests, use the `.create()` method to instantiate classes with overridden dependencies:

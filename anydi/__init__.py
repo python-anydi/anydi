@@ -7,11 +7,6 @@ from ._module import Module
 from ._provider import ProviderDef as Provider
 from ._types import Scope
 
-# Alias for dependency auto marker
-# TODO: deprecate it
-auto = Inject()
-
-
 __all__ = [
     "Container",
     "Inject",
@@ -19,7 +14,6 @@ __all__ = [
     "Provide",
     "Provider",
     "Scope",
-    "auto",
     "import_container",
     "injectable",
     "provided",

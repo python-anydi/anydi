@@ -33,10 +33,6 @@ class Service:
         return self.repo.get(item_id)
 
 
-class UnknownService:
-    pass
-
-
 @pytest.fixture(scope="session")
 def container() -> Container:
     container = Container()
@@ -71,34 +67,6 @@ def test_no_container_setup(
         "`container` fixture is not found and 'anydi_container' config is not set"
         in exc_info.value.msg
     )
-
-
-@pytest.mark.inject
-def test_inject_service(service: Service) -> None:
-    assert isinstance(service, Service)
-
-
-@pytest.mark.xfail
-@pytest.mark.inject
-def test_inject_unknown_service(unknown_service: UnknownService) -> None:
-    pass
-
-
-@pytest.mark.inject
-async def test_ainject_service(service: Service) -> None:
-    assert isinstance(service, Service)
-
-
-@pytest.mark.xfail
-@pytest.mark.inject
-async def test_ainject_unknown_service(unknown_service: UnknownService) -> None:
-    pass
-
-
-@pytest.mark.xfail
-@pytest.mark.inject
-def test_inject_missing_type(service) -> None:  # type: ignore[no-untyped-def]
-    pass
 
 
 def test_get_container_from_config(
@@ -187,9 +155,8 @@ def test_container_test_mode_enabled(container: Container) -> None:
     assert container._test_mode is True
 
 
-@pytest.mark.inject
 def test_override_works_for_injected_service(
-    container: Container, service: Service
+    container: Container, service: Provide[Service]
 ) -> None:
     """Test that override works for already-resolved injected services."""
 

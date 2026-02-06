@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import logging
-import warnings
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Annotated, Any, cast, get_args, get_origin
 
@@ -38,13 +37,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    config.addinivalue_line(
-        "markers",
-        "inject: mark test as needing dependency injection (deprecated)",
-    )
-
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_fixture_setup(
     fixturedef: pytest.FixtureDef[Any], request: SubRequest
@@ -69,19 +61,15 @@ def _anydi_inject(request: pytest.FixtureRequest) -> None:
     if inspect.iscoroutinefunction(request.function):
         return
 
-    parameters, uses_deprecated = _get_injectable_params(request)
+    parameters = _get_injectable_params(request)
     if not parameters:
         return
 
     container = cast(Container, request.getfixturevalue("container"))
 
-    warned = False
     for name, dependency_type in parameters:
         if not container.has_provider_for(dependency_type):
             continue
-        if uses_deprecated and not warned:
-            _warn_deprecated_marker(request.node.name)
-            warned = True
         try:
             request.node.funcargs[name] = container.resolve(dependency_type)
         except Exception:  # pragma: no cover
@@ -96,7 +84,7 @@ def _anydi_ainject(request: pytest.FixtureRequest) -> None:
     ) and not inspect.isasyncgenfunction(request.function):
         return
 
-    parameters, uses_deprecated = _get_injectable_params(request)
+    parameters = _get_injectable_params(request)
     if not parameters:
         return
 
@@ -111,13 +99,9 @@ def _anydi_ainject(request: pytest.FixtureRequest) -> None:
     container = cast(Container, request.getfixturevalue("container"))
 
     async def _resolve() -> None:
-        warned = False
         for name, dependency_type in parameters:
             if not container.has_provider_for(dependency_type):
                 continue
-            if uses_deprecated and not warned:
-                _warn_deprecated_marker(request.node.name)
-                warned = True
             try:
                 request.node.funcargs[name] = await container.aresolve(dependency_type)
             except Exception:  # pragma: no cover
@@ -134,16 +118,12 @@ def _anydi_ainject(request: pytest.FixtureRequest) -> None:
 
 def _get_injectable_params(
     request: pytest.FixtureRequest,
-) -> tuple[list[tuple[str, Any]], bool]:
-    """Get injectable parameters for a test function.
-
-    Returns (parameters, uses_deprecated_marker) tuple.
-    """
+) -> list[tuple[str, Any]]:
+    """Get injectable parameters for a test function."""
     fixture_names = set(request.node._fixtureinfo.initialnames) - set(
         request.node._fixtureinfo.name2fixturedefs.keys()
     )
 
-    marker = request.node.get_closest_marker("inject")
     autoinject = cast(bool, request.config.getini("anydi_autoinject"))
 
     has_any_explicit = False
@@ -164,14 +144,12 @@ def _get_injectable_params(
         elif name in fixture_names:
             all_params.append((name, dependency_type))
 
-    # Priority: explicit markers > deprecated @pytest.mark.inject > autoinject
+    # Priority: explicit markers > autoinject
     if has_any_explicit:
-        return explicit_params, False
-    if marker is not None:
-        return all_params, True
+        return explicit_params
     if autoinject:
-        return all_params, False
-    return [], False
+        return all_params
+    return []
 
 
 def _extract_dependency_type(annotation: Any) -> tuple[Any, bool]:
@@ -210,13 +188,4 @@ def _find_container(request: pytest.FixtureRequest) -> Container:
         "`container` fixture is not found and 'anydi_container' config is not set. "
         "Either define a `container` fixture in your test module "
         "or set 'anydi_container' in pytest.ini.",
-    )
-
-
-def _warn_deprecated_marker(test_name: str) -> None:
-    warnings.warn(
-        f"Using @pytest.mark.inject on test '{test_name}' is deprecated. "
-        "Use Provide[T] instead.",
-        DeprecationWarning,
-        stacklevel=4,
     )

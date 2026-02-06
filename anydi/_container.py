@@ -356,8 +356,6 @@ class Container:
         from_context: bool = False,
         override: bool = False,
         alias: Any = NOT_SET,
-        interface: Any = NOT_SET,
-        call: Callable[..., Any] = NOT_SET,
     ) -> Provider:
         """Register a provider for the specified dependency type."""
         if self.ready and not override:
@@ -366,23 +364,8 @@ class Container:
                 "All providers must be registered before building the container."
             )
 
-        if interface is not NOT_SET:
-            warnings.warn(
-                "The `interface` is deprecated. Use `dependency_type` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if call is not NOT_SET:
-            warnings.warn(
-                "The `call` is deprecated. Use `factory` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if dependency_type is NOT_SET:
-            dependency_type = interface
         if factory is NOT_SET:
-            factory = call if call is not NOT_SET else dependency_type
+            factory = dependency_type
         provider = self._register_provider(
             dependency_type, factory, scope, from_context, override, None
         )
@@ -1235,11 +1218,9 @@ class Container:
     @contextlib.contextmanager
     def override(
         self,
-        dependency_type: Any = NOT_SET,
+        dependency_type: Any,
         /,
-        instance: Any = NOT_SET,
-        *,
-        interface: Any = NOT_SET,
+        instance: Any,
     ) -> Iterator[None]:
         """Override a dependency with a specific instance for testing."""
         if not self._test_mode:
@@ -1249,15 +1230,6 @@ class Container:
                 UserWarning,
                 stacklevel=2,
             )
-
-        if interface is not NOT_SET:
-            warnings.warn(
-                "The `interface` is deprecated. Use `dependency_type` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if dependency_type is NOT_SET:
-                dependency_type = interface
 
         if dependency_type is NOT_SET:
             raise TypeError("override() missing required argument: 'dependency_type'")
