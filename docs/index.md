@@ -2,11 +2,11 @@
 
 Simple Dependency Injection library that uses Python type annotations.
 
-<a href="https://github.com/antonrh/anydi/actions/workflows/ci.yml">
-    <img src="https://github.com/antonrh/anydi/actions/workflows/ci.yml/badge.svg" alt="CI">
+<a href="https://github.com/python-anydi/anydi/actions/workflows/ci.yml">
+    <img src="https://github.com/python-anydi/anydi/actions/workflows/ci.yml/badge.svg" alt="CI">
 </a>
-<a href="https://codecov.io/gh/antonrh/anydi">
-    <img src="https://codecov.io/gh/antonrh/anydi/branch/main/graph/badge.svg" alt="Coverage">
+<a href="https://codecov.io/gh/python-anydi/anydi">
+    <img src="https://codecov.io/gh/python-anydi/anydi/branch/main/graph/badge.svg" alt="Coverage">
 </a>
 <a href="https://anydi.readthedocs.io/en/stable/">
     <img src="https://readthedocs.org/projects/anydi/badge/?version=latest" alt="Documentation">
