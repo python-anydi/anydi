@@ -1,7 +1,7 @@
 site_name: AnyDI
 site_description: Dependency Injection library
 site_author: Anton Ruhlov
-site_url: https://github.com/antonrh/anydi
+site_url: https://github.com/python-anydi/anydi
 
 theme:
   name: material
@@ -15,8 +15,8 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
-repo_name: antonrh/anydi
-repo_url: https://github.com/antonrh/anydi
+repo_name: python-anydi/anydi
+repo_url: https://github.com/python-anydi/anydi
 edit_uri: ""
 
 nav:

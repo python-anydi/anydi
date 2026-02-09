@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/antonrh/anydi"
+Repository = "https://github.com/python-anydi/anydi"
 
 [project.scripts]
 anydi = "anydi._cli:main"

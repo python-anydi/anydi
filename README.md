@@ -4,10 +4,10 @@
 
 Simple Dependency Injection library that uses Python type annotations.
 
-[![CI](https://github.com/antonrh/anydi/actions/workflows/ci.yml/badge.svg)](https://github.com/antonrh/anydi/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/antonrh/anydi/branch/main/graph/badge.svg)](https://codecov.io/gh/antonrh/anydi)
+[![CI](https://github.com/python-anydi/anydi/actions/workflows/ci.yml/badge.svg)](https://github.com/python-anydi/anydi/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/python-anydi/anydi/branch/main/graph/badge.svg)](https://codecov.io/gh/python-anydi/anydi)
 [![Documentation](https://readthedocs.org/projects/anydi/badge/?version=latest)](https://anydi.readthedocs.io/en/stable/)
-[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/antonrh/anydi?utm_source=badge)
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/python-anydi/anydi?utm_source=badge)
 
 </div>
 
