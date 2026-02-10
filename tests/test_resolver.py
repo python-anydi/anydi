@@ -160,6 +160,37 @@ class TestResolver:
         # Use object.__getattribute__ to bypass proxy delegation
         assert object.__getattribute__(proxy, "_self_dependency_type") is int
 
+    def test_instance_proxy_callable(self) -> None:
+        """Test that InstanceProxy properly delegates __call__ to wrapped object."""
+
+        class Callable:
+            def __call__(self) -> str:
+                return "HELLO"
+
+        proxy = InstanceProxy(Callable(), dependency_type=Callable)
+        assert proxy() == "HELLO"
+
+    def test_callable_dependency_in_test_mode(self) -> None:
+        """Test that callable dependencies work in test mode (override mode)."""
+
+        class Callable:
+            def __call__(self) -> str:
+                return "HELLO"
+
+        container = Container()
+
+        @container.provider(scope="singleton")
+        def provide_callable() -> Callable:
+            return Callable()
+
+        @container.provider(scope="singleton")
+        def provide_str(c: Callable) -> str:
+            return c()
+
+        container.enable_test_mode()
+
+        assert container.resolve(str) == "HELLO"
+
     def test_resolver_compile_from_context_create_error(self) -> None:
         """Test that calling create() on a from_context provider raises TypeError."""
         container = Container()

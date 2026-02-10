@@ -27,6 +27,9 @@ class InstanceProxy(wrapt.ObjectProxy):  # type: ignore
     def dependency_type(self) -> Any:
         return self._self_dependency_type
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.__wrapped__(*args, **kwargs)  # type: ignore
+
 
 class CompiledResolver(NamedTuple):
     resolve: Any
