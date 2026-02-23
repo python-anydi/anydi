@@ -2925,7 +2925,7 @@ class TestContainerCustomScopes:
     async def test_child_scope_provider_accesses_parent_from_context_async(
         self, container: Container
     ) -> None:
-        """Child scope providers can resolve from_context values from parent scope (async)."""
+        """Child scope providers can resolve from_context values from parent scope."""
         container.register_scope("child_scope", parents=["request"])
 
         class MyValue:
