@@ -2896,6 +2896,58 @@ class TestContainerCustomScopes:
             context.set(TaskRequest, TaskRequest(task_id="task-123"))
             assert container.resolve(str) == "task-123"
 
+    def test_child_scope_provider_accesses_parent_from_context(
+        self, container: Container
+    ) -> None:
+        """Child scope providers can resolve from_context values from parent scope."""
+        container.register_scope("child_scope", parents=["request"])
+
+        class MyValue:
+            def __init__(self, data: str) -> None:
+                self.data = data
+
+        class MyService:
+            def __init__(self, value: MyValue) -> None:
+                self.value = value
+
+        container.register(MyValue, scope="request", from_context=True)
+
+        @container.provider(scope="child_scope")
+        def provide_service(value: MyValue) -> MyService:
+            return MyService(value)
+
+        with container.request_context() as ctx:
+            ctx.set(MyValue, MyValue(data="hello"))
+            with container.scoped_context("child_scope"):
+                service = container.resolve(MyService)
+                assert service.value.data == "hello"
+
+    async def test_child_scope_provider_accesses_parent_from_context_async(
+        self, container: Container
+    ) -> None:
+        """Child scope providers can resolve from_context values from parent scope (async)."""
+        container.register_scope("child_scope", parents=["request"])
+
+        class MyValue:
+            def __init__(self, data: str) -> None:
+                self.data = data
+
+        class MyService:
+            def __init__(self, value: MyValue) -> None:
+                self.value = value
+
+        container.register(MyValue, scope="request", from_context=True)
+
+        @container.provider(scope="child_scope")
+        async def provide_service(value: MyValue) -> MyService:
+            return MyService(value)
+
+        async with container.arequest_context() as ctx:
+            ctx.set(MyValue, MyValue(data="hello"))
+            async with container.ascoped_context("child_scope"):
+                service = await container.aresolve(MyService)
+                assert service.value.data == "hello"
+
     def test_custom_scope_nested_parent_scope_dependency(
         self, container: Container
     ) -> None:

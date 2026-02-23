@@ -760,6 +760,13 @@ class Container:
 
             # If the dependency is a from_context provider, mark it appropriately
             if dep_provider.from_context:
+                # shared_scope should only be True when scopes match,
+                # so that cross-scope from_context deps fall back to their
+                # own scope's ContextVar instead of receiving the wrong context.
+                shared_scope = (
+                    dep_provider.scope == provider.scope
+                    and provider.scope != "transient"
+                )
                 resolved_params.append(
                     ProviderParameter(
                         name=param.name,
@@ -767,7 +774,7 @@ class Container:
                         default=param.default,
                         has_default=param.has_default,
                         provider=dep_provider,
-                        shared_scope=True,
+                        shared_scope=shared_scope,
                     )
                 )
                 continue
@@ -1062,6 +1069,12 @@ class Container:
                             f"provided via scoped context."
                         ) from None
 
+                # Calculate shared_scope
+                shared_scope = (
+                    dep_provider.scope == provider.scope
+                    and provider.scope != "transient"
+                )
+
                 # If the dependency is a from_context provider, mark it appropriately
                 if dep_provider.from_context:
                     resolved_params.append(
@@ -1071,16 +1084,10 @@ class Container:
                             default=param.default,
                             has_default=param.has_default,
                             provider=dep_provider,
-                            shared_scope=True,
+                            shared_scope=shared_scope,
                         )
                     )
                     continue
-
-                # Calculate shared_scope
-                shared_scope = (
-                    dep_provider.scope == provider.scope
-                    and provider.scope != "transient"
-                )
 
                 # Create resolved parameter
                 resolved_params.append(
