@@ -5,7 +5,7 @@ help:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 lint: ## Run code linters
-	uv run pyright
+	uv run ty check
 	uv run ruff format --check
 	uv run ruff check
 

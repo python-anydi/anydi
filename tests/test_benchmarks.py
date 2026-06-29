@@ -6,7 +6,7 @@ from pytest_codspeed import BenchmarkFixture
 
 if "--codspeed" not in sys.argv:
     pytest.skip(
-        "Benchmark tests are skipped by default; run with --codspeed.",
+        "Benchmark tests are skipped by default; run with --codspeed.",  # ty: ignore[too-many-positional-arguments]
         allow_module_level=True,
     )
 

@@ -127,9 +127,9 @@ class Injector:
         new_metadata = metadata[:-1]
         if new_metadata:
             if hasattr(Annotated, "__getitem__"):
-                new_annotation = Annotated.__getitem__((origin, *new_metadata))  # type: ignore
+                new_annotation = Annotated.__getitem__((origin, *new_metadata))
             else:
-                new_annotation = Annotated.__class_getitem__((origin, *new_metadata))  # type: ignore
+                new_annotation = Annotated.__class_getitem__((origin, *new_metadata))
         else:
             new_annotation = origin
         return parameter.replace(annotation=new_annotation, default=marker)

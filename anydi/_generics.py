@@ -86,7 +86,7 @@ def _reconstruct_generic(origin: Any, resolved_args: tuple[Any, ...]) -> Any:
         return origin
 
 
-def resolve_typevars(annotation: Any, typevar_map: dict[TypeVar, type[Any]]) -> Any:
+def resolve_typevars(annotation: Any, typevar_map: dict[Any, type[Any]]) -> Any:
     """Substitute TypeVars in a type annotation with concrete types."""
     if not typevar_map:
         return annotation

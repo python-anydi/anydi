@@ -9,7 +9,7 @@ from anydi.ext import pytest_plugin
 
 if "-p" not in sys.argv or "anydi" not in sys.argv:
     pytest.skip(
-        "Plugin tests are skipped by default; run with -p anydi.",
+        "Plugin tests are skipped by default; run with -p anydi.",  # ty: ignore[too-many-positional-arguments]
         allow_module_level=True,
     )
 

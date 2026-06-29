@@ -72,7 +72,7 @@ class Provider:
 @dataclass(slots=True)
 class ProviderDef:
     dependency_type: Any = NOT_SET
-    factory: Callable[..., Any] = NOT_SET
+    factory: Callable[..., Any] | NOT_SET = NOT_SET
     _: KW_ONLY
     from_context: bool = False
     scope: Scope = "singleton"

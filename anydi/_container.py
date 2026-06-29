@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator, Callable, Iterable, Iterator, Sequenc
 from contextvars import ContextVar
 from typing import Any, Literal, TypeVar, cast, get_args, get_origin, overload
 
-from typing_extensions import ParamSpec, Self, type_repr
+from typing_extensions import ParamSpec, Self, TypeForm, type_repr
 
 from ._context import InstanceContext
 from ._decorators import is_provided
@@ -350,7 +350,7 @@ class Container:
     def register(
         self,
         dependency_type: Any = NOT_SET,
-        factory: Callable[..., Any] = NOT_SET,
+        factory: Callable[..., Any] | NOT_SET = NOT_SET,
         *,
         scope: Scope = "singleton",
         from_context: bool = False,
@@ -849,13 +849,7 @@ class Container:
 
     # == Instance Resolution ==
 
-    @overload
-    def resolve(self, dependency_type: type[T], /) -> T: ...
-
-    @overload
-    def resolve(self, dependency_type: T, /) -> T: ...  # type: ignore
-
-    def resolve(self, dependency_type: type[T], /) -> T:
+    def resolve(self, dependency_type: TypeForm[T], /) -> T:
         """Resolve an instance by dependency type using compiled sync resolver."""
         cached = self._resolver.get_cached(dependency_type, is_async=False)
         if cached is not None:
@@ -865,13 +859,7 @@ class Container:
         compiled = self._resolver.compile(provider, is_async=False)
         return compiled.resolve(self)
 
-    @overload
-    async def aresolve(self, dependency_type: type[T], /) -> T: ...
-
-    @overload
-    async def aresolve(self, dependency_type: T, /) -> T: ...
-
-    async def aresolve(self, dependency_type: type[T], /) -> T:
+    async def aresolve(self, dependency_type: TypeForm[T], /) -> T:
         """Resolve an instance by dependency type asynchronously."""
         cached = self._resolver.get_cached(dependency_type, is_async=True)
         if cached is not None:
@@ -881,7 +869,7 @@ class Container:
         compiled = self._resolver.compile(provider, is_async=True)
         return await compiled.resolve(self)
 
-    def create(self, dependency_type: type[T], /, **defaults: Any) -> T:
+    def create(self, dependency_type: TypeForm[T], /, **defaults: Any) -> T:
         """Create an instance by dependency type."""
         if not defaults:
             cached = self._resolver.get_cached(dependency_type, is_async=False)
@@ -892,7 +880,7 @@ class Container:
         compiled = self._resolver.compile(provider, is_async=False)
         return compiled.create(self, defaults or None)
 
-    async def acreate(self, dependency_type: type[T], /, **defaults: Any) -> T:
+    async def acreate(self, dependency_type: TypeForm[T], /, **defaults: Any) -> T:
         """Create an instance by dependency type asynchronously."""
         if not defaults:
             cached = self._resolver.get_cached(dependency_type, is_async=True)
