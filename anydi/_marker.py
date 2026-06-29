@@ -9,17 +9,48 @@ from ._types import NOT_SET
 T = TypeVar("T")
 
 
+class _FrameworkAttr:
+    """Data descriptor multiplexing a framework attribute across owners.
+
+    Framework base classes (e.g. ``fastapi.params.Depends``) are now frozen
+    dataclasses that expose their fields as class-level defaults. A plain
+    ``__getattr__`` hook would be shadowed by those defaults, so the framework
+    attributes are exposed as data descriptors instead, which take precedence
+    over the base class attributes regardless of MRO position.
+    """
+
+    __slots__ = ("_name",)
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def __get__(self, obj: Marker | None, owner: type[Any] | None = None) -> Any:
+        if obj is None:
+            return self
+        return obj._get_attr(self._name)
+
+    def __set__(self, obj: Marker, value: Any) -> None:
+        obj._store_attr(self._name, value)
+
+
 class Marker:
     """Marker stored in annotations or defaults to request injection."""
 
     __slots__ = ("_attrs", "_current_owner", "_dependency_type", "_preferred_owner")
 
-    _FRAMEWORK_ATTRS = frozenset({"dependency", "use_cache", "cast", "cast_result"})
+    # Framework-specific attributes are stored per-owner so that a single marker
+    # instance can back multiple framework integrations (e.g. FastAPI and
+    # FastStream) at once. They are descriptors so they win over the frozen
+    # dataclass field defaults declared on the framework base classes.
+    dependency = _FrameworkAttr("dependency")
+    use_cache = _FrameworkAttr("use_cache")
+    cast = _FrameworkAttr("cast")
+    cast_result = _FrameworkAttr("cast_result")
+    scope = _FrameworkAttr("scope")
 
     def __init__(self, dependency_type: Any = NOT_SET) -> None:
         # Avoid reinitializing attributes when mixins call __init__ multiple times
         if not hasattr(self, "_attrs"):
-            super().__init__()
             self._attrs: dict[str, dict[str, Any]] = {}
             self._preferred_owner = "fastapi"
             self._current_owner: str | None = None
@@ -42,15 +73,10 @@ class Marker:
         raise AttributeError(name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in self._FRAMEWORK_ATTRS and hasattr(self, "_attrs"):
-            self._store_attr(name, value)
-        else:
-            super().__setattr__(name, value)
-
-    def __getattr__(self, name: str) -> Any:
-        if name in self._FRAMEWORK_ATTRS and hasattr(self, "_attrs"):
-            return self._get_attr(name)
-        raise AttributeError(name)
+        # Route through object.__setattr__ so framework base classes that are
+        # frozen dataclasses don't reject the assignment; the _FrameworkAttr
+        # descriptors still intercept the framework attributes.
+        object.__setattr__(self, name, value)
 
     @property
     def dependency_type(self) -> Any:
