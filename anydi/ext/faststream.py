@@ -47,17 +47,16 @@ class RequestScopedMiddleware(BaseMiddleware):
             return await call_next(msg)
 
 
-class FastStreamMarker(Dependant, Marker):
+class FastStreamMarker(Marker, Dependant):
     def __init__(self) -> None:
         Marker.__init__(self)
         self._current_owner = "faststream"
-        Dependant.__init__(
-            self,
-            self._faststream_dependency,
-            use_cache=True,
-            cast=True,
-            cast_result=True,
-        )
+        # Set the framework fields directly instead of calling Dependant.__init__;
+        # the Marker descriptors route them per-owner.
+        self.dependency = self._faststream_dependency
+        self.use_cache = True
+        self.cast = True
+        self.cast_result = True
         self._current_owner = None
 
     async def _faststream_dependency(self, context: ContextRepo) -> Any:
