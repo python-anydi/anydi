@@ -8,6 +8,7 @@ from typing import (
     TypedDict,
     TypeGuard,
     TypeVar,
+    cast,
     overload,
 )
 
@@ -55,7 +56,7 @@ def provided(
             metadata["alias"] = alias
         if from_context:
             metadata["from_context"] = from_context
-        cls.__provided__ = metadata  # type: ignore[attr-defined]
+        cast("type[Provided]", cls).__provided__ = metadata
         return cls
 
     return decorator
@@ -81,7 +82,7 @@ def singleton(
         metadata: ProvidedMetadata = {"scope": "singleton"}
         if alias is not NOT_SET:
             metadata["alias"] = alias
-        c.__provided__ = metadata  # type: ignore[attr-defined]
+        cast("type[Provided]", c).__provided__ = metadata
         return c
 
     if cls is None:
@@ -110,7 +111,7 @@ def transient(
         metadata: ProvidedMetadata = {"scope": "transient"}
         if alias is not NOT_SET:
             metadata["alias"] = alias
-        c.__provided__ = metadata  # type: ignore[attr-defined]
+        cast("type[Provided]", c).__provided__ = metadata
         return c
 
     if cls is None:
@@ -145,7 +146,7 @@ def request(
             metadata["alias"] = alias
         if from_context:
             metadata["from_context"] = from_context
-        c.__provided__ = metadata  # type: ignore[attr-defined]
+        cast("type[Provided]", c).__provided__ = metadata
         return c
 
     if cls is None:
@@ -181,7 +182,7 @@ def provider(
         metadata: ProviderMetadata = {"scope": scope, "override": override}
         if alias is not NOT_SET:
             metadata["alias"] = alias
-        target.__provider__ = metadata  # type: ignore
+        cast("Provider", target).__provider__ = metadata
         return target
 
     return decorator
@@ -216,7 +217,7 @@ def injectable(
     """Decorator for marking a function or method as requiring dependency injection."""
 
     def decorator(inner: Callable[P, T]) -> Callable[P, T]:
-        inner.__injectable__ = InjectableMetadata(tags=tags)  # type: ignore
+        cast("Injectable", inner).__injectable__ = InjectableMetadata(tags=tags)
         return inner
 
     if func is None:

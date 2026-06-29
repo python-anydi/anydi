@@ -53,8 +53,8 @@ anydi = "anydi.ext.pytest_plugin"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.0",
-    "pyright>=1.1.408",
+    "ty>=0.0.55",
+    "ruff>=0.15.20",
     "pytest>=8.4.0,<9",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.14.1",
@@ -79,6 +79,18 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "anydi"
 module-root = "."
+
+[tool.ty.src]
+include = [
+    "anydi/**/*.py",
+    "tests/**/*.py",
+]
+
+[[tool.ty.overrides]]
+include = ["tests/test_scanner.py"]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"
 
 [tool.ruff]
 line-length = 88

@@ -168,7 +168,7 @@ class TestContainerRegistration:
                 r"The provider `Test` is invalid because it is not a callable object."
             ),
         ):
-            container.register("Test", scope="singleton")  # type: ignore
+            container.register("Test", scope="singleton")
 
     def test_register_iterator_no_arg_not_allowed(self, container: Container) -> None:
         with pytest.raises(
@@ -188,7 +188,7 @@ class TestContainerRegistration:
                 r"Please register the scope first using register_scope\(\)."
             ),
         ):
-            container.register(generator, scope="other")  # type: ignore
+            container.register(generator, scope="other")
 
     def test_register_transient_resource_not_allowed(
         self, container: Container
@@ -206,7 +206,7 @@ class TestContainerRegistration:
         def service_ident() -> str:
             return "10000"
 
-        def service(ident) -> Service:  # type: ignore
+        def service(ident) -> Service:
             return Service(ident=ident)
 
         with pytest.raises(
@@ -3304,8 +3304,8 @@ class TestContainerInjector:
                 return message
 
     def test_inject_missing_annotation(self, container: Container) -> None:
-        def handler(name=Inject()) -> str:  # type: ignore
-            return name  # type: ignore
+        def handler(name=Inject()) -> str:
+            return name
 
         with pytest.raises(
             TypeError, match=r"Missing `(.*?).handler` parameter `name` annotation."
@@ -3912,7 +3912,7 @@ class TestContainerGenericResolution:
         """Test resolving with multi-level generic inheritance."""
 
         class Service(Generic[U]):
-            def __init__(self, repo: Repository[U]) -> None:  # type: ignore[type-var]
+            def __init__(self, repo: Repository[U]) -> None:  # ty: ignore[invalid-type-arguments]
                 self.repo = repo
 
         class MiddleUserService(Service[User]):
@@ -3933,7 +3933,7 @@ class TestContainerGenericResolution:
         """Test resolving with multiple type parameters."""
 
         class Processor(Generic[U, V]):
-            def __init__(self, input_repo: Repository[U]) -> None:  # type: ignore[type-var]
+            def __init__(self, input_repo: Repository[U]) -> None:  # ty: ignore[invalid-type-arguments]
                 self.input_repo = input_repo
 
         class UserGuestProcessor(Processor[User, Guest]):

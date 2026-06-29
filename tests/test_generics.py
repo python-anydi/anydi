@@ -126,7 +126,7 @@ def test_resolve_annotated_type() -> None:
 def test_resolve_nested_generic() -> None:
     V = TypeVar("V")
     typevar_map = {V: User}
-    result = resolve_typevars(list[Repository[V]], typevar_map)  # type: ignore[type-arg]
+    result = resolve_typevars(list[Repository[V]], typevar_map)  # ty: ignore[invalid-type-arguments]
     assert result == list[Repository[User]]
 
 
@@ -147,7 +147,7 @@ def test_resolve_union_with_nested_generic() -> None:
     V = TypeVar("V")
     typevar_map = {V: User}
 
-    result = resolve_typevars(Repository[V] | None, typevar_map)  # type: ignore[type-arg]
+    result = resolve_typevars(Repository[V] | None, typevar_map)  # ty: ignore[invalid-type-arguments]
     assert result == Repository[User] | None
 
 
@@ -182,7 +182,7 @@ def test_resolve_typing_union() -> None:
     """Test typing.Union style union (lines 73-74)."""
     V = TypeVar("V")
     typevar_map = {V: User}
-    result = resolve_typevars(Union[V, str], typevar_map)  # type: ignore  # noqa: UP007
+    result = resolve_typevars(Union[V, str], typevar_map)  # noqa: UP007
     assert result == Union[User, str]  # noqa: UP007
 
 
@@ -190,7 +190,7 @@ def test_resolve_typing_union_with_none() -> None:
     """Test typing.Union with None."""
     V = TypeVar("V")
     typevar_map = {V: User}
-    result = resolve_typevars(Union[V, None], typevar_map)  # type: ignore  # noqa: UP007
+    result = resolve_typevars(Union[V, None], typevar_map)  # noqa: UP007
     assert result == Union[User, None]  # noqa: UP007
 
 

@@ -89,11 +89,12 @@ def _anydi_ainject(request: pytest.FixtureRequest) -> None:
         return
 
     if "anyio_backend" not in request.fixturenames:
+        # ty mis-resolves pytest's `_with_exception`-decorated `fail` signature.
         pytest.fail(
-            "To run async test functions with `anyio`, "
+            "To run async test functions with `anyio`, "  # ty: ignore[invalid-argument-type]
             "please configure the `anyio` pytest plugin.\n"
             "See: https://anyio.readthedocs.io/en/stable/testing.html",
-            pytrace=False,
+            pytrace=False,  # ty: ignore[parameter-already-assigned]
         )
 
     container = cast(Container, request.getfixturevalue("container"))

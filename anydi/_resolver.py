@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 import anyio.to_thread
-import wrapt  # type: ignore
+import wrapt
 from typing_extensions import type_repr
 
 from ._provider import Provider
@@ -16,11 +16,11 @@ if TYPE_CHECKING:
     from ._container import Container
 
 
-class InstanceProxy(wrapt.ObjectProxy):  # type: ignore
+class InstanceProxy(wrapt.ObjectProxy):
     """Proxy for dependency instances to enable override support."""
 
     def __init__(self, wrapped: Any, *, dependency_type: Any) -> None:
-        super().__init__(wrapped)  # type: ignore
+        super().__init__(wrapped)
         self._self_dependency_type = dependency_type
 
     @property
@@ -28,7 +28,7 @@ class InstanceProxy(wrapt.ObjectProxy):  # type: ignore
         return self._self_dependency_type
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.__wrapped__(*args, **kwargs)  # type: ignore
+        return self.__wrapped__(*args, **kwargs)
 
 
 class CompiledResolver(NamedTuple):
@@ -790,7 +790,7 @@ class Resolver:
                 return object.__getattribute__(_self, name)
 
             # Apply the patched resolver if wrapped attributes exist
-            instance.__class__.__getattribute__ = __getattribute__
+            cast(Any, instance.__class__).__getattribute__ = __getattribute__
             instance.__class__.__getattribute_patched__ = True
 
         return instance
