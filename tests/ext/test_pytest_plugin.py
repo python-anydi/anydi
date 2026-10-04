@@ -4,7 +4,14 @@ from unittest import mock
 
 import pytest
 
-from anydi import Container, Inject, Provide, get_global_container, global_ref
+from anydi import (
+    Container,
+    Inject,
+    Provide,
+    get_global_container,
+    get_global_container_or_none,
+    global_ref,
+)
 from anydi.ext import pytest_plugin
 
 if "-p" not in sys.argv or "anydi" not in sys.argv:
@@ -250,3 +257,178 @@ def test_global_ref_follows_override(container: Container) -> None:
         assert global_service.name == "overridden"
 
     assert global_service.name == "service"
+
+
+_APP = """
+from anydi import Container
+
+
+class Repository:
+    pass
+
+
+container = Container()
+container.register(Repository)
+"""
+
+_OVERRIDING_CONFTEST = """
+from unittest import mock
+
+import pytest
+
+from app import Repository, container
+
+
+@pytest.fixture(scope="session", autouse=True)
+def session_repo():
+    with container.override(Repository, mock.sentinel.session_repo):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def function_repo():
+    with container.override(Repository, mock.sentinel.function_repo):
+        yield
+"""
+
+
+def _write_ini(pytester: pytest.Pytester, **options: str) -> None:
+    lines = "\n".join(f"{key} = {value}" for key, value in options.items())
+    pytester.makeini(f"[pytest]\n{lines}\n")
+
+
+def test_disabled_plugin_adds_nothing(pytester: pytest.Pytester) -> None:
+    pytester.makepyfile(app=_APP)
+    _write_ini(pytester, anydi="false", anydi_container="app:container")
+    pytester.makepyfile(
+        test_disabled="""
+        from anydi import get_global_container_or_none
+        from app import Repository, container
+
+
+        def test_untouched():
+            assert container._test_mode is False
+            assert get_global_container_or_none() is None
+
+
+        def test_no_injection(repo: Repository):
+            pass
+
+
+        def test_no_fixture(container):
+            pass
+        """
+    )
+
+    result = pytester.runpytest_subprocess()
+
+    result.assert_outcomes(passed=1, errors=2)
+    result.stdout.fnmatch_lines(["*fixture 'repo' not found*"])
+    result.stdout.fnmatch_lines(["*fixture 'container' not found*"])
+
+
+@pytest.mark.parametrize(
+    "order",
+    [
+        ["test_a.py", "test_b.py"],
+        ["test_b.py", "test_a.py"],
+    ],
+)
+def test_overrides_in_test_mode_whatever_runs_first(
+    pytester: pytest.Pytester, order: list[str]
+) -> None:
+    pytester.makepyfile(app=_APP, conftest=_OVERRIDING_CONFTEST)
+    _write_ini(pytester, anydi_container="app:container")
+    pytester.makepyfile(
+        test_a="""
+        from unittest import mock
+
+        from app import Repository
+
+
+        def test_without_fixture(repo: Repository):
+            assert repo is mock.sentinel.function_repo
+        """,
+        test_b="""
+        from app import container as app_container
+
+
+        def test_with_fixture(container):
+            assert container is app_container
+            assert container._test_mode is True
+        """,
+    )
+
+    result = pytester.runpytest_subprocess("-W", "error::UserWarning", *order)
+
+    result.assert_outcomes(passed=2)
+
+
+def test_global_container_created_at_collection(pytester: pytest.Pytester) -> None:
+    pytester.makepyfile(
+        app="""
+        from anydi import create_global_container
+
+
+        class Repository:
+            pass
+
+
+        container = create_global_container()
+        container.register(Repository)
+        """
+    )
+    _write_ini(pytester)
+    pytester.makepyfile(
+        test_global="""
+        from unittest import mock
+
+        from app import Repository, container
+
+
+        def test_override():
+            assert container._test_mode is True
+            with container.override(Repository, mock.sentinel.repo):
+                assert container.resolve(Repository) is mock.sentinel.repo
+        """
+    )
+
+    result = pytester.runpytest_subprocess("-W", "error::UserWarning")
+
+    result.assert_outcomes(passed=1)
+
+
+def test_invalid_container_path(pytester: pytest.Pytester) -> None:
+    _write_ini(pytester, anydi_container="missing.module:container")
+    pytester.makepyfile(test_any="def test_any(): pass")
+
+    result = pytester.runpytest_subprocess()
+
+    assert result.ret == pytest.ExitCode.USAGE_ERROR
+    result.stderr.fnmatch_lines(["*anydi_container=missing.module:container*"])
+
+
+def test_test_mode_off_after_session(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    probe = Container()
+    module = type(sys)("anydi_probe")
+    module.__dict__["container"] = probe
+    monkeypatch.setitem(sys.modules, "anydi_probe", module)
+    _write_ini(pytester, anydi_container="anydi_probe:container")
+    pytester.makepyfile(
+        test_probe="""
+        from anydi_probe import container
+
+
+        def test_on():
+            assert container._test_mode is True
+        """
+    )
+    outer_global = get_global_container_or_none()
+
+    result = pytester.runpytest()
+
+    result.assert_outcomes(passed=1)
+    assert probe._test_mode is False
+    assert get_global_container_or_none() is outer_global

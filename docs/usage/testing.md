@@ -229,6 +229,40 @@ def container() -> Container:
 
 **Note:** The fixture takes priority over the configuration if both are defined.
 
+#### Test mode
+
+The plugin puts the container in test mode before the first fixture runs, so a fixture can override through the container your application imports, without requesting the `container` fixture:
+
+```python
+# conftest.py
+from collections.abc import Iterator
+from unittest import mock
+
+import pytest
+
+from myapp.container import container
+from myapp.payments import PaymentClient
+
+
+@pytest.fixture(scope="session", autouse=True)
+def payment_client_mock() -> Iterator[mock.MagicMock]:
+    payment_client_mock = mock.MagicMock(spec=PaymentClient)
+    with container.override(PaymentClient, payment_client_mock):
+        yield payment_client_mock
+```
+
+This works for the container named by `anydi_container` and for a global container that exists once the tests are collected. The plugin turns test mode off again when the session ends. A container from your own `container` fixture enters test mode when the fixture first runs.
+
+#### Turning the plugin off
+
+The plugin is on wherever `AnyDI` is installed. To turn it off in a project, set `anydi = false`. The plugin then adds no `container` fixture, injects nothing and leaves the container untouched:
+
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+anydi = false
+```
+
 ### Usage
 
 #### Explicit injection with `Provide[T]`

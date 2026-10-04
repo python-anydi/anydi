@@ -15,4 +15,4 @@ fmt: ## Run code formatters
 
 test:  ## Run unit tests
 	uv run pytest -vv tests --cov=anydi
-	uv run pytest -vv tests/ext/test_pytest_plugin.py --cov=anydi --cov-append -p anydi
+	uv run pytest -vv tests/ext/test_pytest_plugin.py --cov=anydi --cov-append -p anydi -p pytester

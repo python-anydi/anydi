@@ -63,7 +63,7 @@ jobs:
       - name: Run tests
         run: |
           uv run pytest -vv tests --cov=anydi
-          uv run pytest -vv tests/ext/test_pytest_plugin.py --cov=anydi --cov-append --cov-report=xml -p anydi
+          uv run pytest -vv tests/ext/test_pytest_plugin.py --cov=anydi --cov-append --cov-report=xml -p anydi -p pytester
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         if: matrix.python == '3.10'
@@ -105,7 +105,7 @@ jobs:
       - name: Run tests
         run: |
           uv run --no-sync pytest tests
-          uv run --no-sync pytest tests/ext/test_pytest_plugin.py -p anydi
+          uv run --no-sync pytest tests/ext/test_pytest_plugin.py -p anydi -p pytester
 
   benchmarks:
     name: Run benchmarks
