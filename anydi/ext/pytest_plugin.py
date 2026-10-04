@@ -24,7 +24,23 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+CONTAINER = pytest.StashKey[Container]()
+# Containers this plugin put into test mode, switched back off at session end
+_ACTIVATED = pytest.StashKey[list[Container]]()
+# The global container the plugin replaced, restored at session end
+_REPLACED_GLOBAL = pytest.StashKey[Container | None]()
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addini(
+        "anydi",
+        help=(
+            "Wire the tests through the configured container: test mode, "
+            "the `container` fixture, injection"
+        ),
+        type="bool",
+        default=True,
+    )
     parser.addini(
         "anydi_container",
         help=(
@@ -42,31 +58,101 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_fixture_setup(
-    fixturedef: pytest.FixtureDef[Any], request: SubRequest
-) -> Generator[None]:
-    """Automatically enable test mode on the container fixture."""
-    yield
-    if fixturedef.argname == "container" and fixturedef.cached_result is not None:
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config: pytest.Config) -> None:
+    if not config.getini("anydi"):
+        return
+    config.stash[_ACTIVATED] = []
+    container = _import_configured_container(config)
+    if container is not None:
+        _activate(config, container)
+    config.pluginmanager.register(_AnydiPlugin(), "anydi-fixtures")
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    for container in config.stash.get(_ACTIVATED, []):
+        container.disable_test_mode()
+    if _REPLACED_GLOBAL in config.stash:
+        reset_global_container()
+        previous = config.stash[_REPLACED_GLOBAL]
+        if previous is not None:
+            set_global_container(previous)
+
+
+class _AnydiPlugin:
+    """Hooks and fixtures registered only when `anydi` is enabled."""
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_collection_finish(self, session: pytest.Session) -> None:
+        # Collection has imported the application, so a global container
+        # created there exists now, before any fixture can override it
+        config = session.config
+        container = config.stash.get(CONTAINER, None) or get_global_container_or_none()
+        if container is not None:
+            _activate(config, container)
+            _use_as_global(config, container)
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_fixture_setup(
+        self, fixturedef: pytest.FixtureDef[Any], request: SubRequest
+    ) -> Generator[None]:
+        """Enable test mode on a container provided by a `container` fixture."""
+        yield
+        if fixturedef.argname != "container" or fixturedef.cached_result is None:
+            return
         container = fixturedef.cached_result[0]
-        if isinstance(container, Container):
-            container.enable_test_mode()
-            # Let global references resolve against the container under test,
-            # without introducing a global container the application never used
-            if uses_global_container():
-                reset_global_container()
-                set_global_container(container)
+        if not isinstance(container, Container):
+            return
+        if container is request.config.stash.get(CONTAINER, None):
+            return
+        container.enable_test_mode()
+        # Let global references resolve against the container under test,
+        # without introducing a global container the application never used
+        if uses_global_container():
+            reset_global_container()
+            set_global_container(container)
+
+    @pytest.fixture(scope="session")
+    def container(self, request: pytest.FixtureRequest) -> Container:
+        """Container fixture."""
+        container = request.config.stash.get(CONTAINER, None)
+        if container is not None:
+            return container
+        return _find_container(request)
+
+    @pytest.fixture(autouse=True)
+    def _anydi_inject(self, request: pytest.FixtureRequest) -> None:
+        """Inject dependencies into sync test functions."""
+        _inject(request)
+
+    @pytest.fixture(autouse=True)
+    def _anydi_ainject(self, request: pytest.FixtureRequest) -> None:
+        """Inject dependencies into async test functions."""
+        _ainject(request)
 
 
-@pytest.fixture(scope="session")
-def container(request: pytest.FixtureRequest) -> Container:
-    """Container fixture."""
-    return _find_container(request)
+def _activate(config: pytest.Config, container: Container) -> None:
+    """Put the container into test mode for the rest of the session."""
+    config.stash[CONTAINER] = container
+    # A container already in test mode belongs to whoever enabled it
+    if not container._test_mode:
+        container.enable_test_mode()
+        config.stash[_ACTIVATED].append(container)
 
 
-@pytest.fixture(autouse=True)
-def _anydi_inject(request: pytest.FixtureRequest) -> None:
+def _use_as_global(config: pytest.Config, container: Container) -> None:
+    """Point global references at the container under test."""
+    if not uses_global_container():
+        return
+    previous = get_global_container_or_none()
+    if previous is container:
+        return
+    reset_global_container()
+    set_global_container(container)
+    config.stash.setdefault(_REPLACED_GLOBAL, previous)
+
+
+def _inject(request: pytest.FixtureRequest) -> None:
     """Inject dependencies into sync test functions."""
     if inspect.iscoroutinefunction(request.function):
         return
@@ -86,8 +172,7 @@ def _anydi_inject(request: pytest.FixtureRequest) -> None:
             logger.warning("Failed to resolve '%s' for %s", name, request.node.nodeid)
 
 
-@pytest.fixture(autouse=True)
-def _anydi_ainject(request: pytest.FixtureRequest) -> None:
+def _ainject(request: pytest.FixtureRequest) -> None:
     """Inject dependencies into async test functions."""
     if not inspect.iscoroutinefunction(
         request.function
@@ -190,25 +275,41 @@ def _extract_dependency_type(annotation: Any) -> tuple[Any, bool]:
     return annotation, False
 
 
-def _find_container(request: pytest.FixtureRequest) -> Container:
-    """Find container from config or auto-detection."""
-    container_path = cast(str | None, request.config.getini("anydi_container"))
-    if container_path:
-        try:
-            return import_container(container_path)
-        except ImportError as exc:
-            raise RuntimeError(
-                f"Failed to load container from config "
-                f"'anydi_container={container_path}': {exc}"
-            ) from exc
+def _import_configured_container(config: pytest.Config) -> Container | None:
+    """Import the container named by `anydi_container`, if set."""
+    container_path = cast(str | None, config.getini("anydi_container"))
+    if not container_path:
+        return None
+    try:
+        return import_container(container_path)
+    except ImportError as exc:
+        raise pytest.UsageError(
+            f"Failed to load container from config "
+            f"'anydi_container={container_path}': {exc}"
+        ) from exc
+
+
+def _detect_container(config: pytest.Config) -> Container | None:
+    """Find the container from config, the global one or `anydi_django`."""
+    container = _import_configured_container(config)
+    if container is not None:
+        return container
 
     global_container = get_global_container_or_none()
     if global_container is not None:
         return global_container
 
-    pluginmanager = request.config.pluginmanager
+    pluginmanager = config.pluginmanager
     if pluginmanager.hasplugin("django") and importlib.util.find_spec("anydi_django"):
         return import_container("anydi_django.container")
+    return None
+
+
+def _find_container(request: pytest.FixtureRequest) -> Container:
+    """Find container from config or auto-detection."""
+    container = _detect_container(request.config)
+    if container is not None:
+        return container
 
     raise pytest.FixtureLookupError(
         None,
