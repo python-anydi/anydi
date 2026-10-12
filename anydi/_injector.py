@@ -9,13 +9,14 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    ParamSpec,
     TypeVar,
     cast,
     get_args,
     get_origin,
 )
 
-from typing_extensions import ParamSpec, type_repr
+from typing_extensions import type_repr
 
 from ._marker import Marker, is_marker
 

@@ -5,10 +5,9 @@ import threading
 from collections.abc import Iterator
 from contextvars import Token
 from types import TracebackType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import anyio.to_thread
-from typing_extensions import Self
 
 from ._async_lock import AsyncRLock
 from ._types import NOT_SET, is_event_type

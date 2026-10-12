@@ -4,6 +4,7 @@ from typing import (
     Any,
     ClassVar,
     Concatenate,
+    NotRequired,
     ParamSpec,
     Protocol,
     TypedDict,
@@ -12,8 +13,6 @@ from typing import (
     cast,
     overload,
 )
-
-from typing_extensions import NotRequired
 
 if TYPE_CHECKING:
     from ._module import Module
