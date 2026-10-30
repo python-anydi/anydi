@@ -12,9 +12,19 @@ import warnings
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextvars import ContextVar
-from typing import Any, Literal, TypeVar, cast, get_args, get_origin, overload
+from typing import (
+    Any,
+    Literal,
+    ParamSpec,
+    Self,
+    TypeVar,
+    cast,
+    get_args,
+    get_origin,
+    overload,
+)
 
-from typing_extensions import ParamSpec, Self, TypeForm, type_repr
+from typing_extensions import TypeForm, type_repr
 
 from ._context import InstanceContext, ScopedContext
 from ._decorators import is_provided

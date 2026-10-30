@@ -1,8 +1,7 @@
 from types import TracebackType
-from typing import Any
+from typing import Any, Self
 
 import anyio
-from typing_extensions import Self
 
 
 class AsyncRLock:

@@ -6,11 +6,10 @@ import uuid
 import warnings
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, Self, TypeVar
 from unittest import mock
 
 import pytest
-from typing_extensions import Self
 
 from anydi import (
     Container,
